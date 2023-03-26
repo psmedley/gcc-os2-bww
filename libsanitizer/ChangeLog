@@ -1,3 +1,31 @@
+2022-05-27  Release Manager
+
+	* GCC 9.5.0 released.
+
+2022-05-11  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2022-02-15  Jakub Jelinek  <jakub@redhat.com>
+
+	* sanitizer_common/sanitizer_linux_libcdep.cc: Cherry-pick
+	llvm-project revision ef14b78d9a144ba81ba02083fe21eb286a88732b.
+
+2022-01-19  H.J. Lu  <hjl.tools@gmail.com>
+
+	Backported from master:
+	2022-01-12  H.J. Lu  <hjl.tools@gmail.com>
+
+	PR sanitizer/102911
+	* asan/asan_malloc_linux.cc (kDlsymAllocPoolSize): Set it to
+	8192 on Linux.
+
+2021-08-05  Martin Liska  <mliska@suse.cz>
+
+	PR sanitizer/101749
+	* sanitizer_common/sanitizer_posix_libcdep.cc: Prevent
+	generation of dependency on _cxa_guard for static
+	initialization.
+
 2021-06-01  Release Manager
 
 	* GCC 9.4.0 released.

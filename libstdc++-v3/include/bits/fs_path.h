@@ -110,7 +110,7 @@ _GLIBCXX_BEGIN_NAMESPACE_CXX11
 
     template<typename _Source>
       struct __constructible_from<_Source, void>
-      : decltype(__is_path_src(std::declval<_Source>(), 0))
+      : decltype(__is_path_src(std::declval<const _Source&>(), 0))
       { };
 
     template<typename _Tp1, typename _Tp2 = void>
@@ -1274,7 +1274,7 @@ inline ptrdiff_t
 distance(filesystem::path::iterator __first, filesystem::path::iterator __last)
 { return __path_iter_distance(__first, __last); }
 
-template<typename _InputIterator, typename _Distance>
+template<typename _Distance>
   void
   advance(filesystem::path::iterator& __i, _Distance __n)
   { __path_iter_advance(__i, static_cast<ptrdiff_t>(__n)); }

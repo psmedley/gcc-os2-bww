@@ -6081,7 +6081,7 @@ vspltis_constant (rtx op, unsigned step, unsigned copies)
 
   /* Also check if are loading up the most significant bit which can be done by
      loading up -1 and shifting the value left by -1.  */
-  else if (EASY_VECTOR_MSB (splat_val, inner))
+  else if (EASY_VECTOR_MSB (splat_val, inner) && step == 1 && copies == 1)
     ;
 
   else
@@ -6130,8 +6130,11 @@ vspltis_shifted (rtx op)
     return false;
 
   /* We need to create pseudo registers to do the shift, so don't recognize
-     shift vector constants after reload.  */
-  if (!can_create_pseudo_p ())
+     shift vector constants after reload.  Don't match it even before RA
+     after split1 is done, because there won't be further splitting pass
+     before RA to do the splitting.  */
+  if (!can_create_pseudo_p ()
+      || (cfun->curr_properties & PROP_rtl_split_insns))
     return false;
 
   nunits = GET_MODE_NUNITS (mode);
@@ -17110,22 +17113,16 @@ rs6000_init_builtins (void)
 #endif
 }
 
-/* Returns the rs6000 builtin decl for CODE.  */
+/* Returns the rs6000 builtin decl for CODE.  Note that we don't check
+   the builtin mask here since there could be some #pragma/attribute
+   target functions and the rs6000_builtin_mask could be wrong when
+   this checking happens, though it will be updated properly later.  */
 
 static tree
 rs6000_builtin_decl (unsigned code, bool initialize_p ATTRIBUTE_UNUSED)
 {
-  HOST_WIDE_INT fnmask;
-
   if (code >= RS6000_BUILTIN_COUNT)
     return error_mark_node;
-
-  fnmask = rs6000_builtin_info[code].mask;
-  if ((fnmask & rs6000_builtin_mask) != fnmask)
-    {
-      rs6000_invalid_builtin ((enum rs6000_builtins)code);
-      return error_mark_node;
-    }
 
   return rs6000_builtin_decls[code];
 }

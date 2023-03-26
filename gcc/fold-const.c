@@ -510,7 +510,7 @@ negate_expr_p (tree t)
       if (TREE_CODE (TREE_OPERAND (t, 1)) == INTEGER_CST)
 	{
 	  tree op1 = TREE_OPERAND (t, 1);
-	  if (wi::to_wide (op1) == TYPE_PRECISION (type) - 1)
+	  if (wi::to_wide (op1) == element_precision (type) - 1)
 	    return true;
 	}
       break;
@@ -703,7 +703,7 @@ fold_negate_expr_1 (location_t loc, tree t)
       if (TREE_CODE (TREE_OPERAND (t, 1)) == INTEGER_CST)
 	{
 	  tree op1 = TREE_OPERAND (t, 1);
-	  if (wi::to_wide (op1) == TYPE_PRECISION (type) - 1)
+	  if (wi::to_wide (op1) == element_precision (type) - 1)
 	    {
 	      tree ntype = TYPE_UNSIGNED (type)
 			   ? signed_type_for (type)
@@ -4761,7 +4761,7 @@ make_range_step (location_t loc, enum tree_code code, tree arg0, tree arg1,
 	n_high = fold_convert_loc (loc, arg0_type, n_high);
 
       /* If we're converting arg0 from an unsigned type, to exp,
-	 a signed type,  we will be doing the comparison as unsigned.
+	 a signed type, we will be doing the comparison as unsigned.
 	 The tests above have already verified that LOW and HIGH
 	 are both positive.
 
@@ -4820,6 +4820,32 @@ make_range_step (location_t loc, enum tree_code code, tree arg0, tree arg1,
 		return NULL_TREE;
 
 	      in_p = (in_p != n_in_p);
+	    }
+	}
+
+      /* Otherwise, if we are converting arg0 from signed type, to exp,
+	 an unsigned type, we will do the comparison as signed.  If
+	 high is non-NULL, we punt above if it doesn't fit in the signed
+	 type, so if we get through here, +[-, high] or +[low, high] are
+	 equivalent to +[-, n_high] or +[n_low, n_high].  Similarly,
+	 +[-, -] or -[-, -] are equivalent too.  But if low is specified and
+	 high is not, the +[low, -] range is equivalent to union of
+	 +[n_low, -] and +[-, -1] ranges, so +[low, -] is equivalent to
+	 -[0, n_low-1] and similarly -[low, -] to +[0, n_low-1], except for
+	 low being 0, which should be treated as [-, -].  */
+      else if (TYPE_UNSIGNED (exp_type)
+	       && !TYPE_UNSIGNED (arg0_type)
+	       && low
+	       && !high)
+	{
+	  if (integer_zerop (low))
+	    n_low = NULL_TREE;
+	  else
+	    {
+	      n_high = fold_build2_loc (loc, PLUS_EXPR, arg0_type,
+					n_low, build_int_cst (arg0_type, -1));
+	      n_low = build_zero_cst (arg0_type);
+	      in_p = !in_p;
 	    }
 	}
 

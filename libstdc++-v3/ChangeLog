@@ -1,3 +1,472 @@
+2022-05-27  Release Manager
+
+	* GCC 9.5.0 released.
+
+2022-05-16  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2022-05-16  Jonathan Wakely  <jwakely@redhat.com>
+
+	* doc/html/manual/status.html: Regenerate.
+	* doc/xml/manual/status_cxx2020.xml: Fix supported version for
+	C++20 bit operations and power-of-two operations.
+
+2022-05-09  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2022-05-06  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/105502
+	* include/bits/random.tcc
+	(operator>>(basic_istream<C,T>&, normal_distribution<R>&)):
+	Update state when __state_avail is false.
+	* testsuite/26_numerics/random/normal_distribution/operators/serialize.cc:
+	Check that deserialized object equals serialized one.
+
+2022-05-09  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2021-11-26  Jonathan Wakely  <jwakely@redhat.com>
+
+	* testsuite/27_io/types/1.cc: Add c++11 target selector to
+	warnings.
+
+2022-05-09  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2022-02-04  Jonathan Wakely  <jwakely@redhat.com>
+
+	* include/experimental/bits/fs_ops.h (fs::copy_file): Remove
+	noexcept.
+	(fs::create_directories): Likewise.
+	(fs::remove_all): Likewise.
+	* src/filesystem/ops.cc (fs::copy_file): Remove noexcept.
+	(fs::create_directories): Likewise.
+	(fs::remove_all): Likewise.
+
+2022-05-09  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2021-12-09  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/103630
+	* libsupc++/exception_ptr.h (make_exception_ptr): Decay the
+	template parameter. Use typeid of the static type.
+	* testsuite/18_support/exception_ptr/103630.cc: New test.
+
+2022-05-09  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2020-12-17  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/93151
+	* config/os/djgpp/error_constants.h: Test POSIX errno macros
+	directly, instead of corresponding _GLIBCXX_HAVE_EXXX macros.
+	* config/os/mingw32-w64/error_constants.h: Likewise.
+	* config/os/mingw32/error_constants.h: Likewise.
+
+2022-05-09  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2020-12-16  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/93151
+	* acinclude.m4 (GLIBCXX_CHECK_SYSTEM_ERROR): Remove.
+	* config.h.in: Regenerate.
+	* configure: Regenerate.
+	* configure.ac (GLIBCXX_CHECK_SYSTEM_ERROR): Do not use.
+	* config/os/generic/error_constants.h: Test POSIX errno macros
+	directly, instead of corresponding _GLIBCXX_HAVE_EXXX macros.
+	* testsuite/19_diagnostics/headers/system_error/errc_std_c++0x.cc:
+	Likewise.
+	* testsuite/19_diagnostics/headers/system_error/93151.cc: New
+	test.
+
+2022-05-09  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2021-05-04  Jonathan Wakely  <jwakely@redhat.com>
+
+	* include/bits/basic_string.h (basic_string(const CharT*, const A&)):
+	Do not do arithmetic on null pointer.
+
+2022-05-09  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2021-08-12  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/101870
+	* include/c_global/cmath (hypot): Use __promoted_t.
+	(lerp): Add new overload accepting any arithmetic types.
+	* include/ext/type_traits.h (__promoted_t): New alias template.
+	* testsuite/26_numerics/lerp.cc: Moved to...
+	* testsuite/26_numerics/lerp/1.cc: ...here.
+	* testsuite/26_numerics/lerp/constexpr.cc: New test.
+	* testsuite/26_numerics/lerp/version.cc: New test.
+
+2022-05-09  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2021-10-01  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/100153
+	* include/bits/vector.tcc (vector<bool>::_M_shrink_to_fit()):
+	When size() is zero just deallocate and reset.
+
+2022-05-09  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2021-10-01  Jonathan Wakely  <jwakely@redhat.com>
+
+	* testsuite/25_algorithms/is_permutation/2.cc: Include <iterator>.
+
+2022-05-09  Pavel I. Kryukov  <pavel.kryukov@phystech.edu>
+
+	Backported from master:
+	2022-01-06  Pavel I. Kryukov  <pavel.kryukov@phystech.edu>
+		    Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/103853
+	* include/bits/forward_list.tcc (forward_list::merge): Check for
+	self-merge.
+	* testsuite/23_containers/forward_list/operations/merge.cc: New test.
+
+2022-05-09  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2021-12-04  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/103549
+	* include/bits/regex.h (match_results): Give names to template
+	parameters in first declaration.
+	(match_results::_M_begin): Add default member-initializer.
+
+2022-05-09  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2022-01-05  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/103877
+	* doc/xml/faq.xml: Add '-x c++' to preprocessor command.
+	* doc/html/faq.html: Regenerate.
+
+2022-05-09  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2022-01-17  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/103650
+	* include/Makefile.am: Rename LT_OBJDIR and STDC_HEADERS.
+	* include/Makefile.in: Regenerate.
+	* testsuite/17_intro/headers/c++1998/103650.cc: New test.
+
+2022-05-09  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2022-04-01  Jonathan Wakely  <jwakely@redhat.com>
+
+	* include/experimental/bits/fs_fwd.h (copy_file): Remove
+	incorrect noexcept from declaration.
+	* include/experimental/bits/fs_path.h (path::begin, path::end):
+	Add noexcept to declarations, to match definitions.
+
+2022-05-09  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2022-04-14  Jonathan Wakely  <jwakely@redhat.com>
+
+	* doc/xml/manual/intro.xml: Fix comment.
+
+2022-05-09  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2022-05-09  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/102048
+	* include/ext/rope (rope::erase(size_type)): Deprecate broken
+	function.
+
+2021-11-23  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2021-11-23  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/103381
+	* include/ext/bitmap_allocator.h: Include <bits/stl_function.h>
+	instead of <functional>.
+
+2021-11-01  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2021-11-01  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/103022
+	* include/std/valarray (begin, end): Do not dereference an empty
+	valarray. Add noexcept.
+	* testsuite/26_numerics/valarray/range_access.cc: Check empty
+	valarray. Check iterator properties. Run as well as compiling.
+	* testsuite/26_numerics/valarray/range_access2.cc: Likewise.
+	* testsuite/26_numerics/valarray/103022.cc: New test.
+
+2021-10-13  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2021-10-13  Jonathan Wakely  <jwakely@redhat.com>
+
+	* testsuite/28_regex/match_results/102667.C: Moved to...
+	* testsuite/28_regex/match_results/102667.cc: ...here.
+
+2021-10-13  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2021-09-17  Jonathan Wakely  <jwakely@redhat.com>
+
+	* testsuite/26_numerics/valarray/dr630-3.C: Moved to...
+	* testsuite/26_numerics/valarray/dr630-3.cc: ...here.
+	* testsuite/27_io/basic_iostream/cons/16251.C: Moved to...
+	* testsuite/27_io/basic_iostream/cons/16251.cc: ...here.
+
+2021-10-13  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2021-09-16  Jonathan Wakely  <jwakely@redhat.com>
+
+	* include/bits/fs_path.h (advance): Remove non-deducible
+	template parameter.
+
+2021-10-13  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2021-09-23  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/102425
+	* src/c++11/system_error.cc
+	(system_error_category::default_error_condition): Add 0 to
+	switch.
+	* testsuite/19_diagnostics/error_category/102425.cc: New test.
+
+2021-10-13  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2021-08-17  Jonathan Wakely  <jwakely@redhat.com>
+
+	* python/libstdcxx/v6/printers.py (StdErrorCodePrinter): Define.
+	(build_libstdcxx_dictionary): Register printer for
+	std::error_code and std::error_condition.
+	* testsuite/libstdc++-prettyprinters/cxx11.cc: Test it.
+
+2021-10-13  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2021-08-16  Jonathan Wakely  <jwakely@redhat.com>
+
+	* python/Makefile.am [GLIBCXX_BUILD_DEBUG] (install-data-local):
+	Install another copy of the GDB hook.
+	* python/Makefile.in: Regenerate.
+
+2021-10-13  Jonathan Wakely  <jwakely@redhat.com>
+
+	* testsuite/27_io/filesystem/operations/remove_all.cc: Remove
+	test directory after making it writable again.
+	* testsuite/experimental/filesystem/operations/remove_all.cc:
+	Likewise.
+
+2021-10-13  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2021-10-11  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/102667
+	* include/bits/regex.h (match_result::empty()): Optimize by
+	calling the base function directly.
+	(match_results::end()): Check _Base_type::empty() not empty().
+	* testsuite/28_regex/match_results/102667.C: New test.
+
+2021-08-11  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2021-08-11  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/101866
+	* testsuite/experimental/random/randint.cc: Loop and retry if
+	reseed() produces the same sequence.
+
+2021-08-11  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2021-07-20  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/101510
+	* src/c++17/fs_ops.cc (fs::create_directories): Use status
+	instead of symlink_status.
+	* src/filesystem/ops.cc (fs::create_directories): Likewise.
+	* testsuite/27_io/filesystem/operations/create_directories.cc:
+	Check symlink to existing directory.
+	* testsuite/27_io/filesystem/operations/create_directory.cc: Do
+	not test with symlinks on Windows.
+	* testsuite/experimental/filesystem/operations/create_directories.cc:
+	Check symlink to existing directory.
+	* testsuite/experimental/filesystem/operations/create_directory.cc:
+	Do not test with symlinks on Windows.
+
+2021-08-11  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2021-07-20  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/101510
+	* src/c++17/fs_ops.cc (create_dir): Adjust whitespace.
+	* testsuite/27_io/filesystem/operations/create_directory.cc:
+	Test creating directory with name of existing symlink to
+	directory.
+	* testsuite/experimental/filesystem/operations/create_directory.cc:
+	Likewise.
+
+2021-08-02  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2021-02-12  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/88881
+	* src/c++17/fs_ops.cc (fs::symlink_status): Re-enable workaround.
+
+2021-08-02  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2021-02-10  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/88881
+	* src/c++17/fs_ops.cc (fs::status): Re-enable workaround.
+
+2021-07-22  Jonathan Wakely  <jwakely@redhat.com>
+
+	* testsuite/ext/profile/mutex_extensions_neg.cc: Prune
+	additional errors in C++20 mode.
+
+2021-07-22  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2021-04-15  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/96657
+	* libsupc++/Makefile.am: Add atomicity.cc here.
+	* src/c++98/Makefile.am: Remove it from here.
+	* libsupc++/Makefile.in: Regenerate.
+	* src/c++98/Makefile.in: Regenerate.
+	* testsuite/18_support/exception_ptr/96657.cc: New test.
+
+2021-07-22  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2021-06-14  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/101034
+	* include/std/any (any(in_place_t<T>, initializer_list<U>, A&&...))
+	(any::emplace<T>(initializer_list<U>, A&&...)): Fix constraint
+	to use lvalue.
+	* testsuite/20_util/any/cons/101034.cc: New test.
+
+2021-07-22  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2020-04-23  Kamlesh Kumar  <kamleshbhalui@gmail.com>
+		    Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/90415
+	PR libstdc++/92156
+	* include/std/any (any): Rename template parameters for consistency
+	with the standard.
+	(any::_Decay): Rename to _Decay_if_not_any.
+	(any::any(T&&)): Remove is_constructible from constraints. Remove
+	non-standard overload.
+	(any::any(in_place_type_t<T>, Args&&...))
+	(any::any(in_place_type_t<T>, initializer_list<U>, Args&&...))
+	(any::emplace(Args&&...))
+	(any::emplace(initializer_list<U>, Args&&...)):
+	Use decay_t instead of _Decay.
+	* testsuite/20_util/any/cons/90415.cc: New test.
+	* testsuite/20_util/any/cons/92156.cc: New Test.
+	* testsuite/20_util/any/misc/any_cast_neg.cc: Make dg-error directives
+	more robust.
+	* testsuite/20_util/any/modifiers/92156.cc: New test.
+
+2021-07-22  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2021-06-09  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/100982
+	* include/std/optional (optional::operator=(const optional<U>&)):
+	Fix value category used in is_assignable check.
+	* testsuite/20_util/optional/assignment/100982.cc: New test.
+
+2021-06-18  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2021-06-18  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/95833
+	* include/std/numeric (reduce(Iter, Iter, T, BinaryOp)): Replace
+	incorrect static_assert with ones matching the 'Mandates'
+	conditions in the standard.
+	* testsuite/26_numerics/reduce/95833.cc: New test.
+
+2021-06-18  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2021-05-17  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/100630
+	* include/bits/fs_path.h (__is_constructible_from): Test
+	construction from a const lvalue, not an rvalue.
+	* include/experimental/bits/fs_path.h (__is_constructible_from):
+	Likewise.
+	* testsuite/27_io/filesystem/path/construct/100630.cc: New test.
+	* testsuite/experimental/filesystem/path/construct/100630.cc:
+	New test.
+
+2021-06-18  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2021-05-04  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/100384
+	* include/std/variant (__get_t): New alias template yielding the
+	return type of std::get<N> on a variant.
+	(__visit_result_t): New alias template yielding the result of
+	std::visit.
+	(__do_visit): Use __get_t.
+	(visit): Use __visit_result_t for return type.
+	* testsuite/20_util/variant/100384.cc: New test.
+
+2021-06-18  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2021-04-22  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/99006
+	* include/bits/shared_ptr.h (allocate_shared): Assert that _Tp
+	is not an array type.
+	* include/bits/shared_ptr_base.h (__allocate_shared): Likewise.
+	* testsuite/20_util/shared_ptr/creation/99006.cc: New test.
+
+2021-06-18  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2021-06-17  Jonathan Wakely  <jwakely@redhat.com>
+
+	PR libstdc++/91488
+	* include/bits/char_traits.h (__constant_string_p)
+	(__constant_array_p): Give external linkage.
+
+2021-06-18  Jonathan Wakely  <jwakely@redhat.com>
+
+	Backported from master:
+	2021-03-11  Jonathan Wakely  <jwakely@redhat.com>
+
+	* python/libstdcxx/v6/printers.py (find_type): Use tag attribute
+	instead of unqualified() method.
+
 2021-06-01  Release Manager
 
 	* GCC 9.4.0 released.
