@@ -1218,7 +1218,7 @@ struct processor_costs power8_cost = {
   COSTS_N_INSNS (17),	/* ddiv */
   128,			/* cache line size */
   32,			/* l1 cache */
-  256,			/* l2 cache */
+  512,			/* l2 cache */
   12,			/* prefetch streams */
   COSTS_N_INSNS (3),	/* SF->DF convert */
 };
@@ -4099,6 +4099,14 @@ rs6000_option_override_internal (bool global_init_p)
       rs6000_isa_flags &= ~OPTION_MASK_CRYPTO;
     }
 
+  if (!TARGET_FPRND && TARGET_VSX)
+    {
+      if (rs6000_isa_flags_explicit & OPTION_MASK_FPRND)
+	/* TARGET_VSX = 1 implies Power 7 and newer */
+	error ("%qs requires %qs", "-mvsx", "-mfprnd");
+      rs6000_isa_flags &= ~OPTION_MASK_FPRND;
+    }
+
   if (TARGET_DIRECT_MOVE && !TARGET_VSX)
     {
       if (rs6000_isa_flags_explicit & OPTION_MASK_DIRECT_MOVE)
@@ -4715,11 +4723,6 @@ rs6000_option_override_internal (bool global_init_p)
 		  str_align_loops = "16";
 		}
 	    }
-
-	  if (flag_align_jumps && !str_align_jumps)
-	    str_align_jumps = "16";
-	  if (flag_align_loops && !str_align_loops)
-	    str_align_loops = "16";
 	}
 
       /* Arrange to save and restore machine status around nested functions.  */
@@ -7044,18 +7047,25 @@ rs6000_adjust_vec_address (rtx scalar_reg,
     element_offset = GEN_INT (INTVAL (element) * scalar_size);
   else
     {
+      /* Mask the element to make sure the element number is between 0 and the
+	 maximum number of elements - 1 so that we don't generate an address
+	 outside the vector.  */
+      rtx num_ele_m1 = GEN_INT (GET_MODE_NUNITS (GET_MODE (mem)) - 1);
+      rtx and_op = gen_rtx_AND (Pmode, element, num_ele_m1);
+      emit_insn (gen_rtx_SET (base_tmp, and_op));
+
       int byte_shift = exact_log2 (scalar_size);
       gcc_assert (byte_shift >= 0);
 
       if (byte_shift == 0)
-	element_offset = element;
+	element_offset = base_tmp;
 
       else
 	{
 	  if (TARGET_POWERPC64)
-	    emit_insn (gen_ashldi3 (base_tmp, element, GEN_INT (byte_shift)));
+	    emit_insn (gen_ashldi3 (base_tmp, base_tmp, GEN_INT (byte_shift)));
 	  else
-	    emit_insn (gen_ashlsi3 (base_tmp, element, GEN_INT (byte_shift)));
+	    emit_insn (gen_ashlsi3 (base_tmp, base_tmp, GEN_INT (byte_shift)));
 
 	  element_offset = base_tmp;
 	}
@@ -8361,7 +8371,7 @@ rs6000_legitimize_address (rtx x, rtx oldx ATTRIBUTE_UNUSED,
 	low_int = 0;
       high_int = INTVAL (XEXP (x, 1)) - low_int;
       sum = force_operand (gen_rtx_PLUS (Pmode, XEXP (x, 0),
-					 GEN_INT (high_int)), 0);
+					 gen_int_mode (high_int, Pmode)), 0);
       return plus_constant (Pmode, sum, low_int);
     }
   else if (GET_CODE (x) == PLUS
@@ -15721,7 +15731,16 @@ rs6000_gimple_fold_builtin (gimple_stmt_iterator *gsi)
       gsi_replace (gsi, g, true);
       return true;
     /* Flavors of vec_and.  */
-    case ALTIVEC_BUILTIN_VAND:
+    case ALTIVEC_BUILTIN_VAND_V16QI_UNS:
+    case ALTIVEC_BUILTIN_VAND_V16QI:
+    case ALTIVEC_BUILTIN_VAND_V8HI_UNS:
+    case ALTIVEC_BUILTIN_VAND_V8HI:
+    case ALTIVEC_BUILTIN_VAND_V4SI_UNS:
+    case ALTIVEC_BUILTIN_VAND_V4SI:
+    case ALTIVEC_BUILTIN_VAND_V2DI_UNS:
+    case ALTIVEC_BUILTIN_VAND_V2DI:
+    case ALTIVEC_BUILTIN_VAND_V4SF:
+    case ALTIVEC_BUILTIN_VAND_V2DF:
       arg0 = gimple_call_arg (stmt, 0);
       arg1 = gimple_call_arg (stmt, 1);
       lhs = gimple_call_lhs (stmt);
@@ -15730,7 +15749,16 @@ rs6000_gimple_fold_builtin (gimple_stmt_iterator *gsi)
       gsi_replace (gsi, g, true);
       return true;
     /* Flavors of vec_andc.  */
-    case ALTIVEC_BUILTIN_VANDC:
+    case ALTIVEC_BUILTIN_VANDC_V16QI_UNS:
+    case ALTIVEC_BUILTIN_VANDC_V16QI:
+    case ALTIVEC_BUILTIN_VANDC_V8HI_UNS:
+    case ALTIVEC_BUILTIN_VANDC_V8HI:
+    case ALTIVEC_BUILTIN_VANDC_V4SI_UNS:
+    case ALTIVEC_BUILTIN_VANDC_V4SI:
+    case ALTIVEC_BUILTIN_VANDC_V2DI_UNS:
+    case ALTIVEC_BUILTIN_VANDC_V2DI:
+    case ALTIVEC_BUILTIN_VANDC_V4SF:
+    case ALTIVEC_BUILTIN_VANDC_V2DF:
       arg0 = gimple_call_arg (stmt, 0);
       arg1 = gimple_call_arg (stmt, 1);
       lhs = gimple_call_lhs (stmt);
@@ -15744,12 +15772,16 @@ rs6000_gimple_fold_builtin (gimple_stmt_iterator *gsi)
       return true;
     /* Flavors of vec_nand.  */
     case P8V_BUILTIN_VEC_NAND:
+    case P8V_BUILTIN_NAND_V16QI_UNS:
     case P8V_BUILTIN_NAND_V16QI:
+    case P8V_BUILTIN_NAND_V8HI_UNS:
     case P8V_BUILTIN_NAND_V8HI:
+    case P8V_BUILTIN_NAND_V4SI_UNS:
     case P8V_BUILTIN_NAND_V4SI:
+    case P8V_BUILTIN_NAND_V2DI_UNS:
+    case P8V_BUILTIN_NAND_V2DI:
     case P8V_BUILTIN_NAND_V4SF:
     case P8V_BUILTIN_NAND_V2DF:
-    case P8V_BUILTIN_NAND_V2DI:
       arg0 = gimple_call_arg (stmt, 0);
       arg1 = gimple_call_arg (stmt, 1);
       lhs = gimple_call_lhs (stmt);
@@ -15762,7 +15794,16 @@ rs6000_gimple_fold_builtin (gimple_stmt_iterator *gsi)
       gsi_replace (gsi, g, true);
       return true;
     /* Flavors of vec_or.  */
-    case ALTIVEC_BUILTIN_VOR:
+    case ALTIVEC_BUILTIN_VOR_V16QI_UNS:
+    case ALTIVEC_BUILTIN_VOR_V16QI:
+    case ALTIVEC_BUILTIN_VOR_V8HI_UNS:
+    case ALTIVEC_BUILTIN_VOR_V8HI:
+    case ALTIVEC_BUILTIN_VOR_V4SI_UNS:
+    case ALTIVEC_BUILTIN_VOR_V4SI:
+    case ALTIVEC_BUILTIN_VOR_V2DI_UNS:
+    case ALTIVEC_BUILTIN_VOR_V2DI:
+    case ALTIVEC_BUILTIN_VOR_V4SF:
+    case ALTIVEC_BUILTIN_VOR_V2DF:
       arg0 = gimple_call_arg (stmt, 0);
       arg1 = gimple_call_arg (stmt, 1);
       lhs = gimple_call_lhs (stmt);
@@ -15771,12 +15812,16 @@ rs6000_gimple_fold_builtin (gimple_stmt_iterator *gsi)
       gsi_replace (gsi, g, true);
       return true;
     /* flavors of vec_orc.  */
+    case P8V_BUILTIN_ORC_V16QI_UNS:
     case P8V_BUILTIN_ORC_V16QI:
+    case P8V_BUILTIN_ORC_V8HI_UNS:
     case P8V_BUILTIN_ORC_V8HI:
+    case P8V_BUILTIN_ORC_V4SI_UNS:
     case P8V_BUILTIN_ORC_V4SI:
+    case P8V_BUILTIN_ORC_V2DI_UNS:
+    case P8V_BUILTIN_ORC_V2DI:
     case P8V_BUILTIN_ORC_V4SF:
     case P8V_BUILTIN_ORC_V2DF:
-    case P8V_BUILTIN_ORC_V2DI:
       arg0 = gimple_call_arg (stmt, 0);
       arg1 = gimple_call_arg (stmt, 1);
       lhs = gimple_call_lhs (stmt);
@@ -15789,7 +15834,16 @@ rs6000_gimple_fold_builtin (gimple_stmt_iterator *gsi)
       gsi_replace (gsi, g, true);
       return true;
     /* Flavors of vec_xor.  */
-    case ALTIVEC_BUILTIN_VXOR:
+    case ALTIVEC_BUILTIN_VXOR_V16QI_UNS:
+    case ALTIVEC_BUILTIN_VXOR_V16QI:
+    case ALTIVEC_BUILTIN_VXOR_V8HI_UNS:
+    case ALTIVEC_BUILTIN_VXOR_V8HI:
+    case ALTIVEC_BUILTIN_VXOR_V4SI_UNS:
+    case ALTIVEC_BUILTIN_VXOR_V4SI:
+    case ALTIVEC_BUILTIN_VXOR_V2DI_UNS:
+    case ALTIVEC_BUILTIN_VXOR_V2DI:
+    case ALTIVEC_BUILTIN_VXOR_V4SF:
+    case ALTIVEC_BUILTIN_VXOR_V2DF:
       arg0 = gimple_call_arg (stmt, 0);
       arg1 = gimple_call_arg (stmt, 1);
       lhs = gimple_call_lhs (stmt);
@@ -15798,7 +15852,16 @@ rs6000_gimple_fold_builtin (gimple_stmt_iterator *gsi)
       gsi_replace (gsi, g, true);
       return true;
     /* Flavors of vec_nor.  */
-    case ALTIVEC_BUILTIN_VNOR:
+    case ALTIVEC_BUILTIN_VNOR_V16QI_UNS:
+    case ALTIVEC_BUILTIN_VNOR_V16QI:
+    case ALTIVEC_BUILTIN_VNOR_V8HI_UNS:
+    case ALTIVEC_BUILTIN_VNOR_V8HI:
+    case ALTIVEC_BUILTIN_VNOR_V4SI_UNS:
+    case ALTIVEC_BUILTIN_VNOR_V4SI:
+    case ALTIVEC_BUILTIN_VNOR_V2DI_UNS:
+    case ALTIVEC_BUILTIN_VNOR_V2DI:
+    case ALTIVEC_BUILTIN_VNOR_V4SF:
+    case ALTIVEC_BUILTIN_VNOR_V2DF:
       arg0 = gimple_call_arg (stmt, 0);
       arg1 = gimple_call_arg (stmt, 1);
       lhs = gimple_call_lhs (stmt);
@@ -16767,7 +16830,7 @@ rs6000_init_builtins (void)
 
   V2DI_type_node = rs6000_vector_type (TARGET_POWERPC64 ? "__vector long"
 				       : "__vector long long",
-				       intDI_type_node, 2);
+				       long_long_integer_type_node, 2);
   V2DF_type_node = rs6000_vector_type ("__vector double", double_type_node, 2);
   V4SI_type_node = rs6000_vector_type ("__vector signed int",
 				       intSI_type_node, 4);
@@ -16786,7 +16849,7 @@ rs6000_init_builtins (void)
   unsigned_V2DI_type_node = rs6000_vector_type (TARGET_POWERPC64
 				       ? "__vector unsigned long"
 				       : "__vector unsigned long long",
-				       unsigned_intDI_type_node, 2);
+				       long_long_unsigned_type_node, 2);
 
   opaque_V4SI_type_node = build_opaque_vector_type (intSI_type_node, 4);
 
@@ -17019,10 +17082,28 @@ rs6000_init_builtins (void)
   def_builtin ("__builtin_cpu_is", ftype, RS6000_BUILTIN_CPU_IS);
   def_builtin ("__builtin_cpu_supports", ftype, RS6000_BUILTIN_CPU_SUPPORTS);
 
-  /* AIX libm provides clog as __clog.  */
-  if (TARGET_XCOFF &&
-      (tdecl = builtin_decl_explicit (BUILT_IN_CLOG)) != NULL_TREE)
-    set_user_assembler_name (tdecl, "__clog");
+  if (TARGET_XCOFF)
+    {
+      /* AIX libm provides clog as __clog.  */
+      if ((tdecl = builtin_decl_explicit (BUILT_IN_CLOG)) != NULL_TREE)
+	set_user_assembler_name (tdecl, "__clog");
+
+      /* When long double is 64 bit, some long double builtins of libc
+	 functions (like __builtin_frexpl) must call the double version
+	 (frexp) not the long double version (frexpl) that expects a 128 bit
+	 argument.  */
+      if (! TARGET_LONG_DOUBLE_128)
+	{
+	  if ((tdecl = builtin_decl_explicit (BUILT_IN_FMODL)) != NULL_TREE)
+	    set_user_assembler_name (tdecl, "fmod");
+	  if ((tdecl = builtin_decl_explicit (BUILT_IN_FREXPL)) != NULL_TREE)
+	    set_user_assembler_name (tdecl, "frexp");
+	  if ((tdecl = builtin_decl_explicit (BUILT_IN_LDEXPL)) != NULL_TREE)
+	    set_user_assembler_name (tdecl, "ldexp");
+	  if ((tdecl = builtin_decl_explicit (BUILT_IN_MODFL)) != NULL_TREE)
+	    set_user_assembler_name (tdecl, "modf");
+	}
+    }
 
 #ifdef SUBTARGET_INIT_BUILTINS
   SUBTARGET_INIT_BUILTINS;
@@ -17056,7 +17137,6 @@ altivec_init_builtins (void)
   size_t i;
   tree ftype;
   tree decl;
-  HOST_WIDE_INT builtin_mask = rs6000_builtin_mask;
 
   tree pvoid_type_node = build_pointer_type (void_type_node);
 
@@ -17418,17 +17498,8 @@ altivec_init_builtins (void)
   d = bdesc_dst;
   for (i = 0; i < ARRAY_SIZE (bdesc_dst); i++, d++)
     {
-      HOST_WIDE_INT mask = d->mask;
-
       /* It is expected that these dst built-in functions may have
 	 d->icode equal to CODE_FOR_nothing.  */
-      if ((mask & builtin_mask) != mask)
-	{
-	  if (TARGET_DEBUG_BUILTIN)
-	    fprintf (stderr, "altivec_init_builtins, skip dst %s\n",
-		     d->name);
-	  continue;
-	}
       def_builtin (d->name, void_ftype_pcvoid_int_int, d->code);
     }
 
@@ -17438,15 +17509,6 @@ altivec_init_builtins (void)
     {
       machine_mode mode1;
       tree type;
-      HOST_WIDE_INT mask = d->mask;
-
-      if ((mask & builtin_mask) != mask)
-	{
-	  if (TARGET_DEBUG_BUILTIN)
-	    fprintf (stderr, "altivec_init_builtins, skip predicate %s\n",
-		     d->name);
-	  continue;
-	}
 
       if (rs6000_overloaded_builtin_p (d->code))
 	mode1 = VOIDmode;
@@ -17493,15 +17555,6 @@ altivec_init_builtins (void)
     {
       machine_mode mode0;
       tree type;
-      HOST_WIDE_INT mask = d->mask;
-
-      if ((mask & builtin_mask) != mask)
-	{
-	  if (TARGET_DEBUG_BUILTIN)
-	    fprintf (stderr, "altivec_init_builtins, skip abs %s\n",
-		     d->name);
-	  continue;
-	}
 
       /* Cannot define builtin if the instruction is disabled.  */
       gcc_assert (d->icode != CODE_FOR_nothing);
@@ -17881,6 +17934,41 @@ builtin_function_type (machine_mode mode_ret, machine_mode mode_arg0,
     case ALTIVEC_BUILTIN_VMINUW:
     case P8V_BUILTIN_VMAXUD:
     case P8V_BUILTIN_VMINUD:
+    case ALTIVEC_BUILTIN_VAND_V16QI_UNS:
+    case ALTIVEC_BUILTIN_VAND_V8HI_UNS:
+    case ALTIVEC_BUILTIN_VAND_V4SI_UNS:
+    case ALTIVEC_BUILTIN_VAND_V2DI_UNS:
+    case ALTIVEC_BUILTIN_VANDC_V16QI_UNS:
+    case ALTIVEC_BUILTIN_VANDC_V8HI_UNS:
+    case ALTIVEC_BUILTIN_VANDC_V4SI_UNS:
+    case ALTIVEC_BUILTIN_VANDC_V2DI_UNS:
+    case ALTIVEC_BUILTIN_VNOR_V16QI_UNS:
+    case ALTIVEC_BUILTIN_VNOR_V8HI_UNS:
+    case ALTIVEC_BUILTIN_VNOR_V4SI_UNS:
+    case ALTIVEC_BUILTIN_VNOR_V2DI_UNS:
+    case ALTIVEC_BUILTIN_VOR_V16QI_UNS:
+    case ALTIVEC_BUILTIN_VOR_V8HI_UNS:
+    case ALTIVEC_BUILTIN_VOR_V4SI_UNS:
+    case ALTIVEC_BUILTIN_VOR_V2DI_UNS:
+    case ALTIVEC_BUILTIN_VXOR_V16QI_UNS:
+    case ALTIVEC_BUILTIN_VXOR_V8HI_UNS:
+    case ALTIVEC_BUILTIN_VXOR_V4SI_UNS:
+    case ALTIVEC_BUILTIN_VXOR_V2DI_UNS:
+    case P8V_BUILTIN_EQV_V16QI_UNS:
+    case P8V_BUILTIN_EQV_V8HI_UNS:
+    case P8V_BUILTIN_EQV_V4SI_UNS:
+    case P8V_BUILTIN_EQV_V2DI_UNS:
+    case P8V_BUILTIN_EQV_V1TI_UNS:
+    case P8V_BUILTIN_NAND_V16QI_UNS:
+    case P8V_BUILTIN_NAND_V8HI_UNS:
+    case P8V_BUILTIN_NAND_V4SI_UNS:
+    case P8V_BUILTIN_NAND_V2DI_UNS:
+    case P8V_BUILTIN_NAND_V1TI_UNS:
+    case P8V_BUILTIN_ORC_V16QI_UNS:
+    case P8V_BUILTIN_ORC_V8HI_UNS:
+    case P8V_BUILTIN_ORC_V4SI_UNS:
+    case P8V_BUILTIN_ORC_V2DI_UNS:
+    case P8V_BUILTIN_ORC_V1TI_UNS:
       h.uns_p[0] = 1;
       h.uns_p[1] = 1;
       h.uns_p[2] = 1;
@@ -20926,6 +21014,9 @@ rs6000_got_register (rtx value ATTRIBUTE_UNUSED)
 
 static rs6000_stack_t stack_info;
 
+/* Set if HARD_FRAM_POINTER_REGNUM is really needed.  */
+static bool frame_pointer_needed_indeed = false;
+
 /* Function to init struct machine_function.
    This will be called, via a pointer variable,
    from push_function_context.  */
@@ -23092,7 +23183,11 @@ rs6000_emit_p9_fp_minmax (rtx dest, rtx op, rtx true_cond, rtx false_cond)
   if (rtx_equal_p (op0, true_cond) && rtx_equal_p (op1, false_cond))
     ;
 
-  else if (rtx_equal_p (op1, true_cond) && rtx_equal_p (op0, false_cond))
+  /* Only when NaNs and signed-zeros are not in effect, smax could be
+     used for `op0 < op1 ? op1 : op0`, and smin could be used for
+     `op0 > op1 ? op1 : op0`.  */
+  else if (rtx_equal_p (op1, true_cond) && rtx_equal_p (op0, false_cond)
+	   && !HONOR_NANS (compare_mode) && !HONOR_SIGNED_ZEROS (compare_mode))
     max_p = !max_p;
 
   else
@@ -26856,9 +26951,9 @@ static void
 rs6000_emit_prologue_components (sbitmap components)
 {
   rs6000_stack_t *info = rs6000_stack_info ();
-  rtx ptr_reg = gen_rtx_REG (Pmode, frame_pointer_needed
-			     ? HARD_FRAME_POINTER_REGNUM
-			     : STACK_POINTER_REGNUM);
+  rtx ptr_reg = gen_rtx_REG (Pmode, frame_pointer_needed_indeed
+				      ? HARD_FRAME_POINTER_REGNUM
+				      : STACK_POINTER_REGNUM);
 
   machine_mode reg_mode = Pmode;
   int reg_size = TARGET_32BIT ? 4 : 8;
@@ -26936,9 +27031,9 @@ static void
 rs6000_emit_epilogue_components (sbitmap components)
 {
   rs6000_stack_t *info = rs6000_stack_info ();
-  rtx ptr_reg = gen_rtx_REG (Pmode, frame_pointer_needed
-			     ? HARD_FRAME_POINTER_REGNUM
-			     : STACK_POINTER_REGNUM);
+  rtx ptr_reg = gen_rtx_REG (Pmode, frame_pointer_needed_indeed
+				      ? HARD_FRAME_POINTER_REGNUM
+				      : STACK_POINTER_REGNUM);
 
   machine_mode reg_mode = Pmode;
   int reg_size = TARGET_32BIT ? 4 : 8;
@@ -27116,7 +27211,10 @@ rs6000_emit_prologue (void)
                            && (lookup_attribute ("no_split_stack",
                                                  DECL_ATTRIBUTES (cfun->decl))
                                == NULL));
- 
+
+  frame_pointer_needed_indeed
+    = frame_pointer_needed && df_regs_ever_live_p (HARD_FRAME_POINTER_REGNUM);
+
   /* Offset to top of frame for frame_reg and sp respectively.  */
   HOST_WIDE_INT frame_off = 0;
   HOST_WIDE_INT sp_off = 0;
@@ -27778,7 +27876,7 @@ rs6000_emit_prologue (void)
     }
 
   /* Set frame pointer, if needed.  */
-  if (frame_pointer_needed)
+  if (frame_pointer_needed_indeed)
     {
       insn = emit_move_insn (gen_rtx_REG (Pmode, HARD_FRAME_POINTER_REGNUM),
 			     sp_reg_rtx);
@@ -28622,7 +28720,7 @@ rs6000_emit_epilogue (int sibcall)
     }
   /* If we have a frame pointer, we can restore the old stack pointer
      from it.  */
-  else if (frame_pointer_needed)
+  else if (frame_pointer_needed_indeed)
     {
       frame_reg_rtx = sp_reg_rtx;
       if (DEFAULT_ABI == ABI_V4)
@@ -33063,8 +33161,9 @@ rs6000_longcall_ref (rtx call_ref, rtx arg)
       rtx reg = gen_rtx_REG (Pmode, regno);
       rtx hi = gen_rtx_UNSPEC (Pmode, gen_rtvec (3, base, call_ref, arg),
 			       UNSPEC_PLT16_HA);
-      rtx lo = gen_rtx_UNSPEC (Pmode, gen_rtvec (3, reg, call_ref, arg),
-			       UNSPEC_PLT16_LO);
+      rtx lo = gen_rtx_UNSPEC_VOLATILE (Pmode,
+					gen_rtvec (3, reg, call_ref, arg),
+					UNSPECV_PLT16_LO);
       emit_insn (gen_rtx_SET (reg, hi));
       emit_insn (gen_rtx_SET (reg, lo));
       return reg;
@@ -37399,6 +37498,7 @@ rs6000_disable_incompatible_switches (void)
     { OPTION_MASK_P9_VECTOR,	OTHER_P9_VECTOR_MASKS,	"power9-vector"	},
     { OPTION_MASK_P8_VECTOR,	OTHER_P8_VECTOR_MASKS,	"power8-vector"	},
     { OPTION_MASK_VSX,		OTHER_VSX_VECTOR_MASKS,	"vsx"		},
+    { OPTION_MASK_ALTIVEC,	OTHER_ALTIVEC_MASKS,	"altivec"	},
   };
 
   for (i = 0; i < ARRAY_SIZE (flags); i++)
@@ -39268,7 +39368,9 @@ rs6000_atomic_assign_expand_fenv (tree *hold, tree *clear, tree *update)
 
       tree fenv_var = create_tmp_var_raw (double_type_node);
       TREE_ADDRESSABLE (fenv_var) = 1;
-      tree fenv_addr = build1 (ADDR_EXPR, double_ptr_type_node, fenv_var);
+      tree fenv_addr = build1 (ADDR_EXPR, double_ptr_type_node,
+			       build4 (TARGET_EXPR, double_type_node, fenv_var,
+				       void_node, NULL_TREE, NULL_TREE));
 
       *hold = build_call_expr (atomic_hold_decl, 1, fenv_addr);
       *clear = build_call_expr (atomic_clear_decl, 0);
@@ -39291,12 +39393,13 @@ rs6000_atomic_assign_expand_fenv (tree *hold, tree *clear, tree *update)
 
   /* Mask to clear everything except for the rounding modes and non-IEEE
      arithmetic flag.  */
-  const unsigned HOST_WIDE_INT hold_exception_mask =
-    HOST_WIDE_INT_C (0xffffffff00000007);
+  const unsigned HOST_WIDE_INT hold_exception_mask
+    = HOST_WIDE_INT_C (0xffffffff00000007);
 
   tree fenv_var = create_tmp_var_raw (double_type_node);
 
-  tree hold_mffs = build2 (MODIFY_EXPR, void_type_node, fenv_var, call_mffs);
+  tree hold_mffs = build4 (TARGET_EXPR, double_type_node, fenv_var, call_mffs,
+			   NULL_TREE, NULL_TREE);
 
   tree fenv_llu = build1 (VIEW_CONVERT_EXPR, uint64_type_node, fenv_var);
   tree fenv_llu_and = build2 (BIT_AND_EXPR, uint64_type_node, fenv_llu,
@@ -39320,12 +39423,13 @@ rs6000_atomic_assign_expand_fenv (tree *hold, tree *clear, tree *update)
 
   /* Mask to clear everything except for the rounding modes and non-IEEE
      arithmetic flag.  */
-  const unsigned HOST_WIDE_INT clear_exception_mask =
-    HOST_WIDE_INT_C (0xffffffff00000000);
+  const unsigned HOST_WIDE_INT clear_exception_mask
+    = HOST_WIDE_INT_C (0xffffffff00000000);
 
   tree fenv_clear = create_tmp_var_raw (double_type_node);
 
-  tree clear_mffs = build2 (MODIFY_EXPR, void_type_node, fenv_clear, call_mffs);
+  tree clear_mffs = build4 (TARGET_EXPR, double_type_node, fenv_clear,
+			    call_mffs, NULL_TREE, NULL_TREE);
 
   tree fenv_clean_llu = build1 (VIEW_CONVERT_EXPR, uint64_type_node, fenv_clear);
   tree fenv_clear_llu_and = build2 (BIT_AND_EXPR, uint64_type_node,
@@ -39350,13 +39454,14 @@ rs6000_atomic_assign_expand_fenv (tree *hold, tree *clear, tree *update)
                                 (*(uint64_t*)fenv_var 0x1ff80fff);
      __builtin_mtfsf (0xff, fenv_update);  */
 
-  const unsigned HOST_WIDE_INT update_exception_mask =
-    HOST_WIDE_INT_C (0xffffffff1fffff00);
-  const unsigned HOST_WIDE_INT new_exception_mask =
-    HOST_WIDE_INT_C (0x1ff80fff);
+  const unsigned HOST_WIDE_INT update_exception_mask
+    = HOST_WIDE_INT_C (0xffffffff1fffff00);
+  const unsigned HOST_WIDE_INT new_exception_mask
+    = HOST_WIDE_INT_C (0x1ff80fff);
 
   tree old_fenv = create_tmp_var_raw (double_type_node);
-  tree update_mffs = build2 (MODIFY_EXPR, void_type_node, old_fenv, call_mffs);
+  tree update_mffs = build4 (TARGET_EXPR, double_type_node, old_fenv,
+			     call_mffs, NULL_TREE, NULL_TREE);
 
   tree old_llu = build1 (VIEW_CONVERT_EXPR, uint64_type_node, old_fenv);
   tree old_llu_and = build2 (BIT_AND_EXPR, uint64_type_node, old_llu,

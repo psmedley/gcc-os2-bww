@@ -443,6 +443,7 @@ extern GTY(()) tree cp_global_trees[CPTI_MAX];
       SWITCH_STMT_NO_BREAK_P (in SWITCH_STMT)
       LAMBDA_EXPR_CAPTURE_OPTIMIZED (in LAMBDA_EXPR)
       IMPLICIT_CONV_EXPR_BRACED_INIT (in IMPLICIT_CONV_EXPR)
+      PACK_EXPANSION_AUTO_P (in *_PACK_EXPANSION)
    3: (TREE_REFERENCE_EXPR) (in NON_LVALUE_EXPR) (commented-out).
       ICS_BAD_FLAG (in _CONV)
       FN_TRY_BLOCK_P (in TRY_BLOCK)
@@ -3622,6 +3623,9 @@ struct GTY(()) lang_decl {
 /* True iff this pack expansion is for sizeof....  */
 #define PACK_EXPANSION_SIZEOF_P(NODE) TREE_LANG_FLAG_1 (NODE)
 
+/* True iff this pack expansion is for auto... in lambda init-capture.  */
+#define PACK_EXPANSION_AUTO_P(NODE) TREE_LANG_FLAG_2 (NODE)
+
 /* True iff the wildcard can match a template parameter pack.  */
 #define WILDCARD_PACK_P(NODE) TREE_LANG_FLAG_0 (NODE)
 
@@ -6272,7 +6276,7 @@ extern tree outermost_open_class		(void);
 extern tree current_nonlambda_class_type	(void);
 extern tree finish_struct			(tree, tree);
 extern void finish_struct_1			(tree);
-extern int resolves_to_fixed_type_p		(tree, int *);
+extern int resolves_to_fixed_type_p		(tree, int * = NULL);
 extern void init_class_processing		(void);
 extern int is_empty_class			(tree);
 extern bool is_really_empty_class		(tree, bool);
@@ -6286,6 +6290,7 @@ extern void pop_lang_context			(void);
 extern tree instantiate_type			(tree, tree, tsubst_flags_t);
 extern void build_self_reference		(void);
 extern int same_signature_p			(const_tree, const_tree);
+extern tree lookup_vfn_in_binfo			(tree, tree);
 extern void maybe_add_class_template_decl_list	(tree, tree, int);
 extern void unreverse_member_declarations	(tree);
 extern void invalidate_class_lookup_cache	(void);
@@ -6492,6 +6497,7 @@ extern tree grokfield (const cp_declarator *, cp_decl_specifier_seq *,
 		       tree, bool, tree, tree);
 extern tree grokbitfield (const cp_declarator *, cp_decl_specifier_seq *,
 			  tree, tree, tree);
+extern tree splice_template_attributes		(tree *, tree);
 extern bool any_dependent_type_attributes_p	(tree);
 extern tree cp_reconstruct_complex_type		(tree, tree);
 extern bool attributes_naming_typedef_ok	(tree);
@@ -6848,6 +6854,7 @@ extern bool alias_type_or_template_p            (tree);
 extern bool alias_template_specialization_p     (const_tree);
 extern bool dependent_alias_template_spec_p     (const_tree);
 extern bool template_parm_object_p		(const_tree);
+extern tree tparm_object_argument		(tree);
 extern bool explicit_class_specialization_p     (tree);
 extern bool push_tinst_level                    (tree);
 extern bool push_tinst_level_loc                (tree, location_t);
@@ -7220,6 +7227,7 @@ extern bool type_has_nontrivial_copy_init	(const_tree);
 extern void maybe_warn_parm_abi			(tree, location_t);
 extern bool class_tmpl_impl_spec_p		(const_tree);
 extern int zero_init_p				(const_tree);
+extern bool zero_init_expr_p			(tree);
 extern bool check_abi_tag_redeclaration		(const_tree, const_tree,
 						 const_tree);
 extern bool check_abi_tag_args			(tree, tree);
@@ -7331,11 +7339,6 @@ extern tree cxx_copy_lang_qualifiers		(const_tree, const_tree);
 
 extern void cxx_print_statistics		(void);
 extern bool maybe_warn_zero_as_null_pointer_constant (tree, location_t);
-/* Analogous to initializer_zerop but also examines the type for
-   which the initializer is being used.  Unlike initializer_zerop,
-   considers empty strings to be zero initializers for arrays and
-   non-zero for pointers.  */
-extern bool type_initializer_zero_p		(tree, tree);
 
 /* in ptree.c */
 extern void cxx_print_xnode			(FILE *, tree, int);

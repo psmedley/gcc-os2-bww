@@ -634,10 +634,12 @@ Objective-C and Objective-C++ Dialects}.
 -mpc-relative-literal-loads @gol
 -msign-return-address=@var{scope} @gol
 -mbranch-protection=@var{none}|@var{standard}|@var{pac-ret}[+@var{leaf}]|@var{bti} @gol
+-mharden-sls=@var{opts} @gol
 -march=@var{name}  -mcpu=@var{name}  -mtune=@var{name}  @gol
 -moverride=@var{string}  -mverbose-cost-dump @gol
 -mstack-protector-guard=@var{guard} -mstack-protector-guard-reg=@var{sysreg} @gol
--mstack-protector-guard-offset=@var{offset} -mtrack-speculation }
+-mstack-protector-guard-offset=@var{offset} -mtrack-speculation @gol
+-moutline-atomics }
 
 @emph{Adapteva Epiphany Options}
 @gccoptlist{-mhalf-reg-file  -mprefer-short-insn-regs @gol
@@ -4312,6 +4314,11 @@ produced for @option{-Wno-unknown-warning} unless other diagnostics
 are being produced.  This allows the use of new @option{-Wno-} options
 with old compilers, but if something goes wrong, the compiler
 warns that an unrecognized option is present.
+
+The effectiveness of some warnings depends on optimizations also being
+enabled. For example @option{-Wsuggest-final-types} is more effective
+with link-time optimization and @option{-Wmaybe-uninitialized} will not
+warn at all unless optimization is enabled.
 
 @table @gcctabopt
 @item -Wpedantic
@@ -10266,6 +10273,12 @@ conflicting translation units.  Specifically
 precedence; and for example @option{-ffp-contract=off} takes precedence
 over @option{-ffp-contract=fast}.  You can override them at link time.
 
+When you need to pass options to the assembler via @option{-Wa} or
+@option{-Xassembler} make sure to either compile such translation
+units with @option{-fno-lto} or consistently use the same assembler
+options on all translation units.  You can alternatively also
+specify assembler options at LTO link time.
+
 If LTO encounters objects with C linkage declared with incompatible
 types in separate translation units to be linked together (undefined
 behavior according to ISO C99 6.2.7), a non-fatal diagnostic may be
@@ -11791,6 +11804,11 @@ of aggregate which is considered for replacement when compiling for
 speed
 (@option{sra-max-scalarization-size-Ospeed}) or size
 (@option{sra-max-scalarization-size-Osize}) respectively.
+
+@item sra-max-propagations
+The maximum number of artificial accesses that Scalar Replacement of
+Aggregates (SRA) will track, per one local variable, in order to
+facilitate copy propagation.
 
 @item tm-max-aggregate-size
 When making copies of thread-local variables in a transaction, this
@@ -15777,6 +15795,19 @@ be used by the compiler when expanding calls to
 @code{__builtin_speculation_safe_copy} to permit a more efficient code
 sequence to be generated.
 
+@item -moutline-atomics
+@itemx -mno-outline-atomics
+Enable or disable calls to out-of-line helpers to implement atomic operations.
+These helpers will, at runtime, determine if the LSE instructions from
+ARMv8.1-A can be used; if not, they will use the load/store-exclusive
+instructions that are present in the base ARMv8.0 ISA.
+
+This option is only applicable when compiling for the base ARMv8.0
+instruction set.  If using a later revision, e.g. @option{-march=armv8.1-a}
+or @option{-march=armv8-a+lse}, the ARMv8.1-Atomics instructions will be
+used directly.  The same applies when using @option{-mcpu=} when the
+selected cpu supports the @samp{lse} feature.
+
 @item -march=@var{name}
 @opindex march
 Specify the name of the target architecture and, optionally, one or
@@ -15826,11 +15857,13 @@ performance of the code.  Permissible values for this option are:
 @samp{generic}, @samp{cortex-a35}, @samp{cortex-a53}, @samp{cortex-a55},
 @samp{cortex-a57}, @samp{cortex-a72}, @samp{cortex-a73}, @samp{cortex-a75},
 @samp{cortex-a76}, @samp{ares}, @samp{exynos-m1}, @samp{emag}, @samp{falkor},
-@samp{neoverse-e1},@samp{neoverse-n1},@samp{qdf24xx}, @samp{saphira},
-@samp{phecda}, @samp{xgene1}, @samp{vulcan}, @samp{octeontx},
-@samp{octeontx81},  @samp{octeontx83}, @samp{thunderx}, @samp{thunderxt88},
+@samp{neoverse-e1}, @samp{neoverse-n1}, @samp{neoverse-n2}, @samp{neoverse-v1},
+@samp{qdf24xx}, @samp{saphira}, @samp{phecda}, @samp{xgene1}, @samp{vulcan},
+@samp{octeontx}, @samp{octeontx81},  @samp{octeontx83},
+@samp{a64fx},
+@samp{thunderx}, @samp{thunderxt88},
 @samp{thunderxt88p1}, @samp{thunderxt81}, @samp{tsv110},
-@samp{thunderxt83}, @samp{thunderx2t99},
+@samp{thunderxt83}, @samp{thunderx2t99}, @samp{zeus},
 @samp{cortex-a57.cortex-a53}, @samp{cortex-a72.cortex-a53},
 @samp{cortex-a73.cortex-a35}, @samp{cortex-a73.cortex-a53},
 @samp{cortex-a75.cortex-a55}, @samp{cortex-a76.cortex-a55}
@@ -15915,6 +15948,17 @@ functions will practically always do this) using the a-key.  The optional
 argument @samp{leaf} can be used to extend the signing to include leaf
 functions.
 @samp{bti} turns on branch target identification mechanism.
+
+@item -mharden-sls=@var{opts}
+@opindex mharden-sls
+Enable compiler hardening against straight line speculation (SLS).
+@var{opts} is a comma-separated list of the following options:
+@table @samp
+@item retbr
+@item blr
+@end table
+In addition, @samp{-mharden-sls=all} enables all SLS hardening while
+@samp{-mharden-sls=none} disables all SLS hardening.
 
 @item -msve-vector-bits=@var{bits}
 @opindex msve-vector-bits
@@ -17532,9 +17576,9 @@ Permissible names are: @samp{arm7tdmi}, @samp{arm7tdmi-s}, @samp{arm710t},
 @samp{cortex-m4}, @samp{cortex-m7}, @samp{cortex-m23}, @samp{cortex-m33},
 @samp{cortex-m1.small-multiply}, @samp{cortex-m0.small-multiply},
 @samp{cortex-m0plus.small-multiply}, @samp{exynos-m1}, @samp{marvell-pj4},
-@samp{neoverse-n1}, @samp{xscale}, @samp{iwmmxt}, @samp{iwmmxt2},
-@samp{ep9312}, @samp{fa526}, @samp{fa626}, @samp{fa606te}, @samp{fa626te},
-@samp{fmp626}, @samp{fa726te}, @samp{xgene1}.
+@samp{neoverse-n1}, @samp{neoverse-n2}, @samp{neoverse-v1}, @samp{xscale},
+@samp{iwmmxt}, @samp{iwmmxt2}, @samp{ep9312}, @samp{fa526}, @samp{fa626},
+@samp{fa606te}, @samp{fa626te}, @samp{fmp626}, @samp{fa726te}, @samp{xgene1}.
 
 Additionally, this option can specify that GCC should tune the performance
 of the code for a big.LITTLE system.  Permissible names are:
@@ -17926,7 +17970,7 @@ is only available when generating non-pic code for M-profile targets.
 @opindex mcmse
 Generate secure code as per the "ARMv8-M Security Extensions: Requirements on
 Development Tools Engineering Specification", which can be found on
-@url{http://infocenter.arm.com/help/topic/com.arm.doc.ecm0359818/ECM0359818_armv8m_security_extensions_reqs_on_dev_tools_1_0.pdf}.
+@url{https://developer.arm.com/documentation/ecm0359818/latest/}.
 @end table
 
 @node AVR Options
@@ -27257,14 +27301,14 @@ BMI, BMI2 and F16C instruction set support.
 
 @item broadwell
 Intel Broadwell CPU with 64-bit extensions, MOVBE, MMX, SSE, SSE2, SSE3, SSSE3,
-SSE4.1, SSE4.2, POPCNT, AVX, AVX2, AES, PCLMUL, FSGSBASE, RDRND, FMA,
-BMI, BMI2, F16C, RDSEED, ADCX and PREFETCHW instruction set support.
+SSE4.1, SSE4.2, POPCNT, AVX, AVX2, AES, PCLMUL, FSGSBASE, RDRND, FMA, BMI, BMI2,
+F16C, RDSEED ADCX and PREFETCHW instruction set support.
 
 @item skylake
 Intel Skylake CPU with 64-bit extensions, MOVBE, MMX, SSE, SSE2, SSE3, SSSE3,
 SSE4.1, SSE4.2, POPCNT, AVX, AVX2, AES, PCLMUL, FSGSBASE, RDRND, FMA,
-BMI, BMI2, F16C, RDSEED, ADCX, PREFETCHW, CLFLUSHOPT, XSAVEC and
-XSAVES instruction set support.
+BMI, BMI2, F16C, RDSEED, ADCX, PREFETCHW, CLFLUSHOPT, XSAVEC and XSAVES
+instruction set support.
 
 @item bonnell
 Intel Bonnell CPU with 64-bit extensions, MOVBE, MMX, SSE, SSE2, SSE3 and SSSE3
@@ -27272,34 +27316,36 @@ instruction set support.
 
 @item silvermont
 Intel Silvermont CPU with 64-bit extensions, MOVBE, MMX, SSE, SSE2, SSE3, SSSE3,
-SSE4.1, SSE4.2, POPCNT, AES, PCLMUL and RDRND instruction set support.
+SSE4.1, SSE4.2, POPCNT, AES, PREFETCHW, PCLMUL and RDRND instruction set support.
 
 @item goldmont
 Intel Goldmont CPU with 64-bit extensions, MOVBE, MMX, SSE, SSE2, SSE3, SSSE3,
-SSE4.1, SSE4.2, POPCNT, AES, PCLMUL, RDRND, XSAVE, XSAVEOPT and FSGSBASE
-instruction set support.
+SSE4.1, SSE4.2, POPCNT, AES, PREFETCHW, PCLMUL, RDRND, XSAVE, XSAVEC, XSAVES,
+XSAVEOPT and FSGSBASE instruction set support.
 
 @item goldmont-plus
 Intel Goldmont Plus CPU with 64-bit extensions, MOVBE, MMX, SSE, SSE2, SSE3,
-SSSE3, SSE4.1, SSE4.2, POPCNT, AES, PCLMUL, RDRND, XSAVE, XSAVEOPT, FSGSBASE,
-PTWRITE, RDPID, SGX and UMIP instruction set support.
+SSSE3, SSE4.1, SSE4.2, POPCNT, AES, PREFETCHW, PCLMUL, RDRND, XSAVE, XSAVEC,
+XSAVES, XSAVEOPT, FSGSBASE, PTWRITE, RDPID, SGX and UMIP instruction set support.
 
 @item tremont
 Intel Tremont CPU with 64-bit extensions, MOVBE, MMX, SSE, SSE2, SSE3, SSSE3,
-SSE4.1, SSE4.2, POPCNT, AES, PCLMUL, RDRND, XSAVE, XSAVEOPT, FSGSBASE, PTWRITE,
-RDPID, SGX, UMIP, GFNI-SSE, CLWB and ENCLV instruction set support.
+SSE4.1, SSE4.2, POPCNT, AES, PREFETCHW, PCLMUL, RDRND, XSAVE, XSAVEC, XSAVES,
+XSAVEOPT, FSGSBASE, PTWRITE, RDPID, SGX, UMIP, GFNI-SSE, CLWB, MOVDIRI,
+MOVDIR64B, CLDEMOTE and WAITPKG instruction set support.
 
 @item knl
 Intel Knight's Landing CPU with 64-bit extensions, MOVBE, MMX, SSE, SSE2, SSE3,
 SSSE3, SSE4.1, SSE4.2, POPCNT, AVX, AVX2, AES, PCLMUL, FSGSBASE, RDRND, FMA,
-BMI, BMI2, F16C, RDSEED, ADCX, PREFETCHW, AVX512F, AVX512PF, AVX512ER and
-AVX512CD instruction set support.
+BMI, BMI2, F16C, RDSEED, ADCX, PREFETCHW, PREFETCHWT1, AVX512F, AVX512PF,
+AVX512ER and AVX512CD instruction set support.
 
 @item knm
 Intel Knights Mill CPU with 64-bit extensions, MOVBE, MMX, SSE, SSE2, SSE3,
 SSSE3, SSE4.1, SSE4.2, POPCNT, AVX, AVX2, AES, PCLMUL, FSGSBASE, RDRND, FMA,
-BMI, BMI2, F16C, RDSEED, ADCX, PREFETCHW, AVX512F, AVX512PF, AVX512ER, AVX512CD,
-AVX5124VNNIW, AVX5124FMAPS and AVX512VPOPCNTDQ instruction set support.
+BMI, BMI2, F16C, RDSEED, ADCX, PREFETCHW, PREFETCHWT1, AVX512F, AVX512PF,
+AVX512ER, AVX512CD, AVX5124VNNIW, AVX5124FMAPS and AVX512VPOPCNTDQ instruction
+set support.
 
 @item skylake-avx512
 Intel Skylake Server CPU with 64-bit extensions, MOVBE, MMX, SSE, SSE2, SSE3,
@@ -27336,6 +27382,14 @@ Intel Cascadelake CPU with 64-bit extensions, MOVBE, MMX, SSE, SSE2, SSE3, SSSE3
 SSE4.1, SSE4.2, POPCNT, PKU, AVX, AVX2, AES, PCLMUL, FSGSBASE, RDRND, FMA, BMI,
 BMI2, F16C, RDSEED, ADCX, PREFETCHW, CLFLUSHOPT, XSAVEC, XSAVES, AVX512F, CLWB,
 AVX512VL, AVX512BW, AVX512DQ, AVX512CD and AVX512VNNI instruction set support.
+
+@item tigerlake
+Intel Tigerlake CPU with 64-bit extensions, MOVBE, MMX, SSE, SSE2, SSE3, SSSE3,
+SSE4.1, SSE4.2, POPCNT, PKU, AVX, AVX2, AES, PCLMUL, FSGSBASE, RDRND, FMA, BMI,
+BMI2, F16C, RDSEED, ADCX, PREFETCHW, CLFLUSHOPT, XSAVEC, XSAVES, AVX512F,
+AVX512VL, AVX512BW, AVX512DQ, AVX512CD, AVX512VBMI, AVX512IFMA, SHA, CLWB, UMIP,
+RDPID, GFNI, AVX512VBMI2, AVX512VPOPCNTDQ, AVX512BITALG, AVX512VNNI, VPCLMULQDQ,
+VAES, PCONFIG, WBNOINVD, MOVDIRI, MOVDIR64B and CLWB instruction set support.
 
 @item k6
 AMD K6 CPU with MMX instruction set support.
@@ -28711,9 +28765,9 @@ Note that @option{-mcmodel=large} is incompatible with
 @option{-mindirect-branch=thunk-extern} since the thunk function may
 not be reachable in the large code model.
 
-Note that @option{-mindirect-branch=thunk-extern} is incompatible with
-@option{-fcf-protection=branch} since the external thunk cannot be modified
-to disable control-flow check.
+Note that @option{-mindirect-branch=thunk-extern} is compatible with
+@option{-fcf-protection=branch} since the external thunk can be made
+to enable control-flow check.
 
 @item -mfunction-return=@var{choice}
 @opindex mfunction-return
@@ -28725,6 +28779,10 @@ function return to external call and return thunk provided in a separate
 object file.  You can control this behavior for a specific function by
 using the function attribute @code{function_return}.
 @xref{Function Attributes}.
+
+Note that @option{-mindirect-return=thunk-extern} is compatible with
+@option{-fcf-protection=branch} since the external thunk can be made
+to enable control-flow check.
 
 Note that @option{-mcmodel=large} is incompatible with
 @option{-mfunction-return=thunk} and

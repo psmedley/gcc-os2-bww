@@ -380,7 +380,8 @@ add_stmt (tree t)
 
       /* When we expand a statement-tree, we must know whether or not the
 	 statements are full-expressions.  We record that fact here.  */
-      STMT_IS_FULL_EXPR_P (t) = stmts_are_full_exprs_p ();
+      if (STATEMENT_CODE_P (TREE_CODE (t)))
+	STMT_IS_FULL_EXPR_P (t) = stmts_are_full_exprs_p ();
     }
 
   if (code == LABEL_EXPR || code == CASE_LABEL_EXPR)
@@ -2437,7 +2438,7 @@ finish_call_expr (tree fn, vec<tree, va_gc> **args, bool disallow_virtual,
 	      bool abnormal = true;
 	      for (lkp_iterator iter (fn); abnormal && iter; ++iter)
 		{
-		  tree fndecl = *iter;
+		  tree fndecl = STRIP_TEMPLATE (*iter);
 		  if (TREE_CODE (fndecl) != FUNCTION_DECL
 		      || !TREE_THIS_VOLATILE (fndecl))
 		    abnormal = false;

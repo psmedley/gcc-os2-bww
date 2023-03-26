@@ -37,7 +37,6 @@ along with GCC; see the file COPYING3.  If not see
 
 /* Local functions, macros and variables.  */
 static const char *op_symbol (const_tree);
-static void pretty_print_string (pretty_printer *, const char*, unsigned);
 static void newline_and_indent (pretty_printer *, int);
 static void maybe_init_pretty_print (FILE *);
 static void print_struct_decl (pretty_printer *, const_tree, int, dump_flags_t);
@@ -2944,10 +2943,11 @@ dump_generic_node (pretty_printer *pp, tree node, int spc, dump_flags_t flags,
 	 libstdc++-prettyprinters/shared_ptr.cc with and without -g,
 	 for example, at occurrences of OBJ_TYPE_REF.  */
       if (!(flags & (TDF_SLIM | TDF_COMPARE_DEBUG))
-	  && virtual_method_call_p (node))
+	  && virtual_method_call_p (node, true))
 	{
 	  pp_string (pp, "(");
-	  dump_generic_node (pp, obj_type_ref_class (node), spc, flags, false);
+	  dump_generic_node (pp, obj_type_ref_class (node, true),
+			     spc, flags, false);
 	  pp_string (pp, ")");
 	}
       dump_generic_node (pp, OBJ_TYPE_REF_OBJECT (node), spc, flags, false);
@@ -4021,8 +4021,8 @@ print_call_name (pretty_printer *pp, tree node, dump_flags_t flags)
 /* Print the first N characters in the array STR, replacing non-printable
    characters (including embedded nuls) with unambiguous escape sequences.  */
 
-static void
-pretty_print_string (pretty_printer *pp, const char *str, unsigned n)
+void
+pretty_print_string (pretty_printer *pp, const char *str, size_t n)
 {
   if (str == NULL)
     return;

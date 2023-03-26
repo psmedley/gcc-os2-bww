@@ -5826,9 +5826,6 @@ reshape_init_array_1 (tree elt_type, tree max_index, reshape_iter *d,
 	max_index_cst = tree_to_uhwi (fold_convert (size_type_node, max_index));
     }
 
-  /* Set to the index of the last element with a non-zero initializer.
-     Zero initializers for elements past this one can be dropped.  */
-  unsigned HOST_WIDE_INT last_nonzero = -1;
   /* Loop until there are no more initializers.  */
   for (index = 0;
        d->cur != d->end && (!sized_array_p || index <= max_index_cst);
@@ -5847,30 +5844,9 @@ reshape_init_array_1 (tree elt_type, tree max_index, reshape_iter *d,
       if (!TREE_CONSTANT (elt_init))
 	TREE_CONSTANT (new_init) = false;
 
-      /* Pointers initialized to strings must be treated as non-zero
-	 even if the string is empty.  */
-      tree init_type = TREE_TYPE (elt_init);
-      if (POINTER_TYPE_P (elt_type) != POINTER_TYPE_P (init_type)
-	  || !type_initializer_zero_p (elt_type, elt_init))
-	last_nonzero = index;
-
       /* This can happen with an invalid initializer (c++/54501).  */
       if (d->cur == old_cur && !sized_array_p)
 	break;
-    }
-
-  if (sized_array_p && trivial_type_p (elt_type))
-    {
-      /* Strip trailing zero-initializers from an array of a trivial
-	 type of known size.  They are redundant and get in the way
-	 of telling them apart from those with implicit zero value.  */
-      unsigned HOST_WIDE_INT nelts = CONSTRUCTOR_NELTS (new_init);
-      if (last_nonzero > nelts)
-	nelts = 0;
-      else if (last_nonzero < nelts - 1)
-	nelts = last_nonzero + 1;
-
-      vec_safe_truncate (CONSTRUCTOR_ELTS (new_init), nelts);
     }
 
   return new_init;
@@ -6342,6 +6318,19 @@ bool
 check_array_initializer (tree decl, tree type, tree init)
 {
   tree element_type = TREE_TYPE (type);
+
+  /* Structured binding when initialized with an array type needs
+     to have complete type.  */
+  if (decl
+      && DECL_DECOMPOSITION_P (decl)
+      && !DECL_DECOMP_BASE (decl)
+      && !COMPLETE_TYPE_P (type))
+    {
+      error_at (DECL_SOURCE_LOCATION (decl),
+		"structured binding has incomplete type %qT", type);
+      TREE_TYPE (decl) = error_mark_node;
+      return true;
+    }
 
   /* The array type itself need not be complete, because the
      initializer may tell us how many elements are in the array.
@@ -7162,6 +7151,12 @@ cp_finish_decl (tree decl, tree init, bool init_const_expr_p,
 	  retrofit_lang_decl (decl);
 	  SET_DECL_DEPENDENT_INIT_P (decl, true);
 	}
+
+      if (VAR_P (decl) && DECL_REGISTER (decl) && asmspec)
+	{
+	  set_user_assembler_name (decl, asmspec);
+	  DECL_HARD_REGISTER (decl) = 1;
+	}
       return;
     }
 
@@ -7323,7 +7318,10 @@ cp_finish_decl (tree decl, tree init, bool init_const_expr_p,
       /* This needs to happen after the linkage is set. */
       determine_visibility (decl);
 
-      if (var_definition_p && TREE_STATIC (decl))
+      if (var_definition_p
+	  /* With -fmerge-all-constants, gimplify_init_constructor
+	     might add TREE_STATIC to the variable.  */
+	  && (TREE_STATIC (decl) || flag_merge_constants >= 2))
 	{
 	  /* If a TREE_READONLY variable needs initialization
 	     at runtime, it is no longer readonly and we need to
@@ -7844,6 +7842,12 @@ cp_finish_decomp (tree decl, tree first, unsigned int count)
 			 : get_tuple_element_type (type, i));
 	  input_location = sloc;
 
+	  if (VOID_TYPE_P (eltype))
+	    {
+	      error ("%<std::tuple_element<%u, %T>::type%> is %<void%>",
+		     i, type);
+	      eltype = error_mark_node;
+	    }
 	  if (init == error_mark_node || eltype == error_mark_node)
 	    {
 	      inform (dloc, "in initialization of structured binding "
@@ -7885,6 +7889,8 @@ cp_finish_decomp (tree decl, tree first, unsigned int count)
       error_at (loc, "cannot decompose lambda closure type %qT", type);
       goto error_out;
     }
+  else if (processing_template_decl && complete_type (type) == error_mark_node)
+    goto error_out;
   else if (processing_template_decl && !COMPLETE_TYPE_P (type))
     pedwarn (loc, 0, "structured binding refers to incomplete class type %qT",
 	     type);
@@ -8448,17 +8454,25 @@ expand_static_init (tree decl, tree init)
 
 	  /* Do the initialization itself.  */
 	  init = add_stmt_to_compound (begin, init);
-	  init = add_stmt_to_compound
-	    (init, build2 (MODIFY_EXPR, void_type_node, flag, boolean_true_node));
-	  init = add_stmt_to_compound
-	    (init, build_call_n (release_fn, 1, guard_addr));
+	  init = add_stmt_to_compound (init,
+				       build2 (MODIFY_EXPR, void_type_node,
+					       flag, boolean_true_node));
+
+	  /* Use atexit to register a function for destroying this static
+	     variable.  Do this before calling __cxa_guard_release.  */
+	  init = add_stmt_to_compound (init, register_dtor_fn (decl));
+
+	  init = add_stmt_to_compound (init, build_call_n (release_fn, 1,
+							   guard_addr));
 	}
       else
-	init = add_stmt_to_compound (init, set_guard (guard));
+	{
+	  init = add_stmt_to_compound (init, set_guard (guard));
 
-      /* Use atexit to register a function for destroying this static
-	 variable.  */
-      init = add_stmt_to_compound (init, register_dtor_fn (decl));
+	  /* Use atexit to register a function for destroying this static
+	     variable.  */
+	  init = add_stmt_to_compound (init, register_dtor_fn (decl));
+	}
 
       finish_expr_stmt (init);
 
@@ -11283,9 +11297,16 @@ grokdeclarator (const cp_declarator *declarator,
 	    attr_flags |= (int) ATTR_FLAG_FUNCTION_NEXT;
 	  if (declarator->kind == cdk_array)
 	    attr_flags |= (int) ATTR_FLAG_ARRAY_NEXT;
+	  tree late_attrs = NULL_TREE;
+	  if (decl_context != PARM)
+	    /* Assume that any attributes that get applied late to
+	       templates will DTRT when applied to the declaration
+	       as a whole.  */
+	    late_attrs = splice_template_attributes (&attrs, type);
 	  returned_attrs = decl_attributes (&type,
 					    chainon (returned_attrs, attrs),
 					    attr_flags);
+	  returned_attrs = chainon (late_attrs, returned_attrs);
 	}
 
       inner_declarator = declarator->declarator;
@@ -15855,14 +15876,20 @@ begin_destructor_body (void)
 	    /* If the vptr is shared with some virtual nearly empty base,
 	       don't clear it if not in charge, the dtor of the virtual
 	       nearly empty base will do that later.  */
-	    if (CLASSTYPE_VBASECLASSES (current_class_type)
-		&& CLASSTYPE_PRIMARY_BINFO (current_class_type)
-		&& BINFO_VIRTUAL_P
-			  (CLASSTYPE_PRIMARY_BINFO (current_class_type)))
+	    if (CLASSTYPE_VBASECLASSES (current_class_type))
 	      {
-		stmt = convert_to_void (stmt, ICV_STATEMENT,
-					tf_warning_or_error);
-		stmt = build_if_in_charge (stmt);
+		tree c = current_class_type;
+		while (CLASSTYPE_PRIMARY_BINFO (c))
+		  {
+		    if (BINFO_VIRTUAL_P (CLASSTYPE_PRIMARY_BINFO (c)))
+		      {
+			stmt = convert_to_void (stmt, ICV_STATEMENT,
+						tf_warning_or_error);
+			stmt = build_if_in_charge (stmt);
+			break;
+		      }
+		    c = BINFO_TYPE (CLASSTYPE_PRIMARY_BINFO (c));
+		  }
 	      }
 	    finish_decl_cleanup (NULL_TREE, stmt);
 	  }

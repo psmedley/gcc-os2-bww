@@ -543,8 +543,9 @@ remap_type_1 (tree type, copy_body_data *id)
 	  /* For array bounds where we have decided not to copy over the bounds
 	     variable which isn't used in OpenMP/OpenACC region, change them to
 	     an uninitialized VAR_DECL temporary.  */
-	  if (TYPE_MAX_VALUE (TYPE_DOMAIN (new_tree)) == error_mark_node
-	      && id->adjust_array_error_bounds
+	  if (id->adjust_array_error_bounds
+	      && TYPE_DOMAIN (new_tree)
+	      && TYPE_MAX_VALUE (TYPE_DOMAIN (new_tree)) == error_mark_node
 	      && TYPE_MAX_VALUE (TYPE_DOMAIN (type)) != error_mark_node)
 	    {
 	      tree v = create_tmp_var (TREE_TYPE (TYPE_DOMAIN (new_tree)));
@@ -3213,10 +3214,10 @@ insert_init_stmt (copy_body_data *id, basic_block bb, gimple *init_stmt)
 	  gimple_assign_set_rhs1 (init_stmt, rhs);
 	}
       gsi_insert_after (&si, init_stmt, GSI_NEW_STMT);
-      gimple_regimplify_operands (init_stmt, &si);
-
       if (!is_gimple_debug (init_stmt))
 	{
+	  gimple_regimplify_operands (init_stmt, &si);
+
 	  tree def = gimple_assign_lhs (init_stmt);
 	  insert_init_debug_bind (id, bb, def, def, init_stmt);
 	}
@@ -5698,6 +5699,7 @@ copy_decl_to_var (tree decl, copy_body_data *id)
   TREE_READONLY (copy) = TREE_READONLY (decl);
   TREE_THIS_VOLATILE (copy) = TREE_THIS_VOLATILE (decl);
   DECL_GIMPLE_REG_P (copy) = DECL_GIMPLE_REG_P (decl);
+  DECL_BY_REFERENCE (copy) = DECL_BY_REFERENCE (decl);
 
   return copy_decl_for_dup_finish (id, decl, copy);
 }

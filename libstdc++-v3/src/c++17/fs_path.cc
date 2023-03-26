@@ -74,7 +74,7 @@ struct path::_Parser
     const size_t len = input.size();
 
     // look for root name or root directory
-    if (is_dir_sep(input[0]))
+    if (len && is_dir_sep(input[0]))
       {
 #if SLASHSLASH_IS_ROOTNAME
 	// look for root name, such as "//foo"
@@ -845,6 +845,26 @@ path::operator+=(const path& p)
       return *this;
     }
 
+#if _GLIBCXX_FILESYSTEM_IS_WINDOWS
+  if (_M_type() == _Type::_Root_name
+      || (_M_type() == _Type::_Filename && _M_pathname.size() == 1))
+    {
+      // Handle path("C") += path(":") and path("C:") += path("/x")
+      // FIXME: do this more efficiently
+      *this = path(_M_pathname + p._M_pathname);
+      return *this;
+    }
+#endif
+#if SLASHSLASH_IS_ROOTNAME
+  if (_M_type() == _Type::_Root_dir)
+    {
+      // Handle path("/") += path("/x") and path("//") += path("x")
+      // FIXME: do this more efficiently
+      *this = path(_M_pathname + p._M_pathname);
+      return *this;
+    }
+#endif
+
   const auto orig_pathlen = _M_pathname.length();
   const auto orig_type = _M_type();
   const auto orig_size = _M_cmpts.size();
@@ -1030,6 +1050,26 @@ path::_M_concat(basic_string_view<value_type> s)
       operator=(s);
       return;
     }
+
+#if _GLIBCXX_FILESYSTEM_IS_WINDOWS
+  if (_M_type() == _Type::_Root_name
+      || (_M_type() == _Type::_Filename && _M_pathname.size() == 1))
+    {
+      // Handle path("C") += ":" and path("C:") += "/x"
+      // FIXME: do this more efficiently
+      *this = path(_M_pathname + string_type(s));
+      return;
+    }
+#endif
+#if SLASHSLASH_IS_ROOTNAME
+  if (_M_type() == _Type::_Root_dir)
+    {
+      // Handle path("/") += "/x" and path("//") += "x"
+      // FIXME: do this more efficiently
+      *this = path(_M_pathname + string_type(s));
+      return;
+    }
+#endif
 
   const auto orig_pathlen = _M_pathname.length();
   const auto orig_type = _M_type();
@@ -1847,10 +1887,9 @@ path::_M_split_cmpts()
 	  _M_cmpts.type(_Type::_Multi);
 	  _M_cmpts.reserve(_M_cmpts.size() + buf.size());
 	  auto output = _M_cmpts._M_impl->end();
-	  for (auto& c : buf)
+	  for (const auto& c : buf)
 	    {
-	      auto pos = c.str.data() - _M_pathname.data();
-	      ::new(output++) _Cmpt(c.str, c.type, pos);
+	      ::new(output++) _Cmpt(c.str, c.type, parser.offset(c));
 	      ++_M_cmpts._M_impl->_M_size;
 	    }
 	  next = buf.begin();
@@ -1870,9 +1909,8 @@ path::_M_split_cmpts()
       auto output = _M_cmpts._M_impl->end();
       for (int i = 0; i < n; ++i)
 	{
-	  auto c = buf[i];
-	  auto pos = c.str.data() - _M_pathname.data();
-	  ::new(output++) _Cmpt(c.str, c.type, pos);
+	  const auto& c = buf[i];
+	  ::new(output++) _Cmpt(c.str, c.type, parser.offset(c));
 	  ++_M_cmpts._M_impl->_M_size;
 	}
     }

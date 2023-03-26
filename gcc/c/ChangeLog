@@ -1,3 +1,123 @@
+2021-06-01  Release Manager
+
+	* GCC 9.4.0 released.
+
+2021-04-20  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2021-04-20  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c/99990
+	* c-decl.c (finish_decl): Don't overwrite TREE_TYPE of
+	error_mark_node.
+
+2021-04-20  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2021-03-30  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c/99588
+	* c-typeck.c (mark_exp_read): Recognize what build_atomic_assign
+	with modifycode NOP_EXPR produces and mark the _Atomic var as read
+	if found.
+	(build_atomic_assign): For modifycode of NOP_EXPR, use COMPOUND_EXPRs
+	rather than STATEMENT_LIST.  Otherwise call mark_exp_read on lhs.
+	Set TREE_SIDE_EFFECTS on the TARGET_EXPR.
+
+2021-04-20  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2021-03-19  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c/99136
+	* c-typeck.c (c_finish_return): Don't wrap retval into
+	EXCESS_PRECISION_EXPR in functions that return void.
+
+2021-04-20  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2020-11-25  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c/97958
+	* c-parser.c (c_parser_binary_expression): For omp atomic binary
+	expressions, use make_node instead of build2 to avoid checking build2
+	performs.
+
+2021-03-06  Tobias Burnus  <tobias@codesourcery.com>
+
+	Backported from master:
+	2021-03-05  Tobias Burnus  <tobias@codesourcery.com>
+
+	PR c/99137
+	* c-parser.c (c_parser_oacc_clause_async): Reject comma expressions.
+
+2020-09-16  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2020-08-18  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c/96571
+	* c-parser.c (c_parser_generic_selection): Change match_found from bool
+	to int, holding index of the match.  Call mark_exp_read on the selector
+	expression and on expressions other than the selected one.
+
+2020-09-16  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from master:
+	2020-05-07  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c/94842
+	* c-decl.c (set_labels_context_r): In addition to context-less
+	LABEL_DECLs adjust also LABEL_DECLs with context equal to
+	parent function if any.
+	(store_parm_decls): Adjust comment.
+
+2020-04-07  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/94512
+	* c-parser.c (c_parser_omp_parallel): Set OMP_PARALLEL_COMBINED
+	if c_parser_omp_master succeeded.
+
+	Backported from mainline
+	2020-03-23  Jakub Jelinek  <jakub@redhat.com>
+
+	PR gcov-profile/94029
+	PR c/94239
+	* c-parser.c (c_parser_declaration_or_fndef): Initialize endloc to
+	the function_start_locus location.  Don't do that afterwards for the
+	__GIMPLE body parsing.
+
+	2020-03-19  Jakub Jelinek  <jakub@redhat.com>
+
+	PR gcov-profile/94029
+	* c-tree.h (finish_function): Add location_t argument defaulted to
+	input_location.
+	* c-parser.c (c_parser_compound_statement): Add endlocp argument and
+	set it to the locus of closing } if non-NULL.
+	(c_parser_compound_statement_nostart): Return locus of closing }.
+	(c_parser_parse_rtl_body): Likewise.
+	(c_parser_declaration_or_fndef): Propagate locus of closing } to
+	finish_function.
+	* c-decl.c (finish_function): Add end_loc argument, use it instead of
+	input_location to set function_end_locus.
+
+	2020-03-17  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c/94172
+	* c-tree.h (C_TYPE_INCOMPLETE_VARS): Define to TYPE_LANG_SLOT_1
+	instead of TYPE_VFIELD, and support it on {RECORD,UNION,ENUMERAL}_TYPE.
+	(TYPE_ACTUAL_ARG_TYPES): Check that it is only used on FUNCTION_TYPEs.
+	* c-decl.c (pushdecl): Push C_TYPE_INCOMPLETE_VARS also to
+	ENUMERAL_TYPEs.
+	(finish_incomplete_vars): New function, moved from finish_struct.  Use
+	relayout_decl instead of layout_decl.
+	(finish_struct): Remove obsolete comment about C_TYPE_INCOMPLETE_VARS
+	being TYPE_VFIELD.  Use finish_incomplete_vars.
+	(finish_enum): Clear C_TYPE_INCOMPLETE_VARS.  Call
+	finish_incomplete_vars.
+	* c-typeck.c (c_build_qualified_type): Clear C_TYPE_INCOMPLETE_VARS
+	also on ENUMERAL_TYPEs.
+
 2020-03-12  Release Manager
 
 	* GCC 9.3.0 released.

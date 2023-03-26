@@ -5790,6 +5790,15 @@ op_is_ordered (tree_code code)
     case LSHIFT_EXPR:
       // 8. a >> b
     case RSHIFT_EXPR:
+      // a && b
+      // Predates P0145R3.
+    case TRUTH_ANDIF_EXPR:
+      // a || b
+      // Predates P0145R3.
+    case TRUTH_ORIF_EXPR:
+      // a , b
+      // Predates P0145R3.
+    case COMPOUND_EXPR:
       return (flag_strong_eval_order ? 1 : 0);
 
     default:
@@ -6835,6 +6844,14 @@ build_temp (tree expr, tree type, int flags,
       && CLASS_TYPE_P (TREE_TYPE (expr))
       && !type_has_nontrivial_copy_init (TREE_TYPE (expr)))
     return get_target_expr_sfinae (expr, complain);
+
+  /* In decltype, we might have decided not to wrap this call in a TARGET_EXPR.
+     But it turns out to be a subexpression, so perform temporary
+     materialization now.  */
+  if (TREE_CODE (expr) == CALL_EXPR
+      && CLASS_TYPE_P (type)
+      && same_type_ignoring_top_level_qualifiers_p (type, TREE_TYPE (expr)))
+    expr = build_cplus_new (type, expr, complain);
 
   savew = warningcount + werrorcount, savee = errorcount;
   args = make_tree_vector_single (expr);
@@ -8301,10 +8318,6 @@ build_over_call (struct z_candidate *cand, int flags, tsubst_flags_t complain)
       gcc_assert (TYPE_PTR_P (parmtype));
       /* Convert to the base in which the function was declared.  */
       gcc_assert (cand->conversion_path != NULL_TREE);
-      converted_arg = build_base_path (PLUS_EXPR,
-				       arg,
-				       cand->conversion_path,
-				       1, complain);
       /* Check that the base class is accessible.  */
       if (!accessible_base_p (TREE_TYPE (argtype),
 			      BINFO_TYPE (cand->conversion_path), true))
@@ -8319,10 +8332,33 @@ build_over_call (struct z_candidate *cand, int flags, tsubst_flags_t complain)
       /* If fn was found by a using declaration, the conversion path
 	 will be to the derived class, not the base declaring fn. We
 	 must convert from derived to base.  */
-      base_binfo = lookup_base (TREE_TYPE (TREE_TYPE (converted_arg)),
+      base_binfo = lookup_base (cand->conversion_path,
 				TREE_TYPE (parmtype), ba_unique,
 				NULL, complain);
-      converted_arg = build_base_path (PLUS_EXPR, converted_arg,
+
+      /* If we know the dynamic type of the object, look up the final overrider
+	 in the BINFO.  */
+      if (DECL_VINDEX (fn) && (flags & LOOKUP_NONVIRTUAL) == 0
+	  && resolves_to_fixed_type_p (arg))
+	{
+	  tree ov = lookup_vfn_in_binfo (DECL_VINDEX (fn), base_binfo);
+
+	  /* And unwind base_binfo to match.  If we don't find the type we're
+	     looking for in BINFO_INHERITANCE_CHAIN, we're looking at diamond
+	     inheritance; for now do a normal virtual call in that case.  */
+	  tree octx = DECL_CONTEXT (ov);
+	  tree obinfo = base_binfo;
+	  while (obinfo && !SAME_BINFO_TYPE_P (BINFO_TYPE (obinfo), octx))
+	    obinfo = BINFO_INHERITANCE_CHAIN (obinfo);
+	  if (obinfo)
+	    {
+	      fn = ov;
+	      base_binfo = obinfo;
+	      flags |= LOOKUP_NONVIRTUAL;
+	    }
+	}
+
+      converted_arg = build_base_path (PLUS_EXPR, arg,
 				       base_binfo, 1, complain);
 
       argarray[j++] = converted_arg;
@@ -9895,17 +9931,6 @@ build_new_method_call_1 (tree instance, tree fns, vec<tree, va_gc> **args,
 
 	  if (call != error_mark_node)
 	    {
-	      /* Optimize away vtable lookup if we know that this
-		 function can't be overridden.  We need to check if
-		 the context and the type where we found fn are the same,
-		 actually FN might be defined in a different class
-		 type because of a using-declaration. In this case, we
-		 do not want to perform a non-virtual call.  */
-	      if (DECL_VINDEX (fn) && ! (flags & LOOKUP_NONVIRTUAL)
-		  && same_type_ignoring_top_level_qualifiers_p
-		  (DECL_CONTEXT (fn), BINFO_TYPE (binfo))
-		  && resolves_to_fixed_type_p (instance, 0))
-		flags |= LOOKUP_NONVIRTUAL;
               if (explicit_targs)
                 flags |= LOOKUP_EXPLICIT_TMPL_ARGS;
 	      /* Now we know what function is being called.  */
@@ -9925,7 +9950,8 @@ build_new_method_call_1 (tree instance, tree fns, vec<tree, va_gc> **args,
 		  tree a = instance;
 		  if (TREE_THIS_VOLATILE (a))
 		    a = build_this (a);
-		  call = build2 (COMPOUND_EXPR, TREE_TYPE (call), a, call);
+		  if (TREE_SIDE_EFFECTS (a))
+		    call = build2 (COMPOUND_EXPR, TREE_TYPE (call), a, call);
 		}
 	      else if (call != error_mark_node
 		       && DECL_DESTRUCTOR_P (cand->fn)

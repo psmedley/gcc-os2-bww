@@ -1098,7 +1098,7 @@ grokbitfield (const cp_declarator *declarator,
 	  && !INTEGRAL_OR_UNSCOPED_ENUMERATION_TYPE_P (TREE_TYPE (width)))
 	error ("width of bit-field %qD has non-integral type %qT", value,
 	       TREE_TYPE (width));
-      else
+      else if (!check_for_bare_parameter_packs (width))
 	{
 	  /* Temporarily stash the width in DECL_BIT_FIELD_REPRESENTATIVE.
 	     check_bitfield_decl picks it from there later and sets DECL_SIZE
@@ -1208,7 +1208,7 @@ is_late_template_attribute (tree attr, tree decl)
    the declaration itself is dependent, so all attributes should be applied
    at instantiation time.  */
 
-static tree
+tree
 splice_template_attributes (tree *attr_p, tree decl)
 {
   tree *p = attr_p;

@@ -24,6 +24,15 @@
 (define_register_constraint "Ucs" "TAILCALL_ADDR_REGS"
   "@internal Registers suitable for an indirect tail call")
 
+(define_register_constraint "Ucr"
+    "aarch64_harden_sls_blr_p () ? STUB_REGS : GENERAL_REGS"
+  "@internal Registers to be used for an indirect call.
+   This is usually the general registers, but when we are hardening against
+   Straight Line Speculation we disallow x16, x17, and x30 so we can use
+   indirection stubs.  These indirection stubs cannot use the above registers
+   since they will be reached by a BL that may have to go through a linker
+   veneer.")
+
 (define_register_constraint "w" "FP_REGS"
   "Floating point and SIMD vector registers.")
 
@@ -219,6 +228,13 @@
   A constraint that matches the integers 2^(0...4)."
   (and (match_code "const_int")
        (match_test "(unsigned) exact_log2 (ival) <= 4")))
+
+(define_constraint "Uph"
+  "@internal
+  A constraint that matches HImode integers zero extendable to
+  SImode plus_operand."
+  (and (match_code "const_int")
+       (match_test "aarch64_plushi_immediate (op, VOIDmode)")))
 
 (define_memory_constraint "Q"
  "A memory address which uses a single base register with no offset."

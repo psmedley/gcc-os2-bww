@@ -668,6 +668,10 @@ gfc_match_data (void)
 	  /* F2008:C567 (R536) A data-i-do-object or a variable that appears
 	     as a data-stmt-object shall not be an object designator in which
 	     a pointer appears other than as the entire rightmost part-ref.  */
+	  if (!e->ref && e->ts.type == BT_DERIVED
+	      && e->symtree->n.sym->attr.pointer)
+	    goto partref;
+
 	  ref = e->ref;
 	  if (e->symtree->n.sym->ts.type == BT_DERIVED
 	      && e->symtree->n.sym->attr.pointer
@@ -1029,6 +1033,11 @@ char_len_param_value (gfc_expr **expr, bool *deferred)
   if (!gfc_expr_check_typed (*expr, gfc_current_ns, false))
     return MATCH_ERROR;
 
+  /* If gfortran gets an EXPR_OP, try to simplifiy it.  This catches things
+     like CHARACTER(([1])).   */
+  if ((*expr)->expr_type == EXPR_OP)
+    gfc_simplify_expr (*expr, 1);
+
   if ((*expr)->expr_type == EXPR_FUNCTION)
     {
       if ((*expr)->ts.type == BT_INTEGER
@@ -1092,6 +1101,9 @@ char_len_param_value (gfc_expr **expr, bool *deferred)
 
       gfc_free_expr (e);
     }
+
+  if (gfc_seen_div0)
+    m = MATCH_ERROR;
 
   return m;
 
@@ -3980,7 +3992,8 @@ error_return:
 match
 gfc_match_decl_type_spec (gfc_typespec *ts, int implicit_flag)
 {
-  char name[GFC_MAX_SYMBOL_LEN + 1];
+  /* Provide sufficient space to hold "pdtsymbol".  */
+  char name[GFC_MAX_SYMBOL_LEN + 1 + 3];
   gfc_symbol *sym, *dt_sym;
   match m;
   char c;
@@ -4025,7 +4038,7 @@ gfc_match_decl_type_spec (gfc_typespec *ts, int implicit_flag)
       gfc_gobble_whitespace ();
       if (gfc_peek_ascii_char () == '*')
 	{
-	  if ((m = gfc_match ("*)")) != MATCH_YES)
+	  if ((m = gfc_match ("* ) ")) != MATCH_YES)
 	    return m;
 	  if (gfc_comp_struct (gfc_current_state ()))
 	    {
@@ -4182,7 +4195,11 @@ gfc_match_decl_type_spec (gfc_typespec *ts, int implicit_flag)
 	    return m;
 	  gcc_assert (!sym->attr.pdt_template && sym->attr.pdt_type);
 	  ts->u.derived = sym;
-	  strcpy (name, gfc_dt_lower_string (sym->name));
+	  const char* lower = gfc_dt_lower_string (sym->name);
+	  size_t len = strnlen (lower, sizeof (name));
+	  gcc_assert (len < sizeof (name));
+	  memcpy (name, lower, len);
+	  name[len] = '\0';
 	}
 
       if (sym && sym->attr.flavor == FL_STRUCT)
@@ -5339,15 +5356,19 @@ match_attr_spec (void)
       if (d == DECL_STATIC && seen[DECL_SAVE])
 	continue;
 
-      if (gfc_current_state () == COMP_DERIVED
+      if (gfc_comp_struct (gfc_current_state ())
 	  && d != DECL_DIMENSION && d != DECL_CODIMENSION
 	  && d != DECL_POINTER   && d != DECL_PRIVATE
 	  && d != DECL_PUBLIC && d != DECL_CONTIGUOUS && d != DECL_NONE)
 	{
+	  bool is_derived = gfc_current_state () == COMP_DERIVED;
 	  if (d == DECL_ALLOCATABLE)
 	    {
-	      if (!gfc_notify_std (GFC_STD_F2003, "ALLOCATABLE "
-				   "attribute at %C in a TYPE definition"))
+	      if (!gfc_notify_std (GFC_STD_F2003, is_derived
+				   ? G_("ALLOCATABLE attribute at %C in a "
+					"TYPE definition")
+				   : G_("ALLOCATABLE attribute at %C in a "
+					"STRUCTURE definition")))
 		{
 		  m = MATCH_ERROR;
 		  goto cleanup;
@@ -5355,8 +5376,11 @@ match_attr_spec (void)
 	    }
 	  else if (d == DECL_KIND)
 	    {
-	      if (!gfc_notify_std (GFC_STD_F2003, "KIND "
-				   "attribute at %C in a TYPE definition"))
+	      if (!gfc_notify_std (GFC_STD_F2003, is_derived
+				   ? G_("KIND attribute at %C in a "
+					"TYPE definition")
+				   : G_("KIND attribute at %C in a "
+					"STRUCTURE definition")))
 		{
 		  m = MATCH_ERROR;
 		  goto cleanup;
@@ -5379,8 +5403,11 @@ match_attr_spec (void)
 	    }
 	  else if (d == DECL_LEN)
 	    {
-	      if (!gfc_notify_std (GFC_STD_F2003, "LEN "
-				   "attribute at %C in a TYPE definition"))
+	      if (!gfc_notify_std (GFC_STD_F2003, is_derived
+				   ? G_("LEN attribute at %C in a "
+					"TYPE definition")
+				   : G_("LEN attribute at %C in a "
+					"STRUCTURE definition")))
 		{
 		  m = MATCH_ERROR;
 		  goto cleanup;
@@ -5403,8 +5430,10 @@ match_attr_spec (void)
 	    }
 	  else
 	    {
-	      gfc_error ("Attribute at %L is not allowed in a TYPE definition",
-			 &seen_at[d]);
+	      gfc_error (is_derived ? G_("Attribute at %L is not allowed in a "
+					 "TYPE definition")
+				    : G_("Attribute at %L is not allowed in a "
+					 "STRUCTURE definition"), &seen_at[d]);
 	      m = MATCH_ERROR;
 	      goto cleanup;
 	    }
@@ -7281,6 +7310,7 @@ gfc_match_function_decl (void)
      procedure interface body.  */
     if (sym->attr.is_bind_c && sym->attr.module_procedure && sym->old_symbol
   	&& strcmp (sym->name, sym->old_symbol->name) == 0
+	&& sym->binding_label && sym->old_symbol->binding_label
 	&& strcmp (sym->binding_label, sym->old_symbol->binding_label) != 0)
       {
 	  const char *null = "NULL", *s1, *s2;
@@ -7796,6 +7826,7 @@ gfc_match_subroutine (void)
 	 procedure interface body.  */
       if (sym->attr.module_procedure && sym->old_symbol
   	  && strcmp (sym->name, sym->old_symbol->name) == 0
+	  && sym->binding_label && sym->old_symbol->binding_label
 	  && strcmp (sym->binding_label, sym->old_symbol->binding_label) != 0)
 	{
 	  const char *null = "NULL", *s1, *s2;
@@ -8962,7 +8993,7 @@ access_attr_decl (gfc_statement st)
 	  else
 	    {
 	      gfc_error ("Access specification of the .%s. operator at %C "
-			 "has already been specified", sym->name);
+			 "has already been specified", uop->name);
 	      goto done;
 	    }
 
@@ -9602,13 +9633,20 @@ gfc_match_submod_proc (void)
   if (get_proc_name (name, &sym, false))
     return MATCH_ERROR;
 
-  /* Make sure that the result field is appropriately filled, even though
-     the result symbol will be replaced later on.  */
+  /* Make sure that the result field is appropriately filled.  */
   if (sym->tlink && sym->tlink->attr.function)
     {
-      if (sym->tlink->result
-	  && sym->tlink->result != sym->tlink)
-	sym->result= sym->tlink->result;
+      if (sym->tlink->result && sym->tlink->result != sym->tlink)
+	{
+	  sym->result = sym->tlink->result;
+	  if (!sym->result->attr.use_assoc)
+	    {
+	      gfc_symtree *st = gfc_new_symtree (&gfc_current_ns->sym_root,
+						 sym->result->name);
+	      st->n.sym = sym->result;
+	      sym->result->refs++;
+	    }
+	}
       else
 	sym->result = sym;
     }
@@ -9657,6 +9695,15 @@ gfc_match_submod_proc (void)
 
   if (gfc_match_eos () != MATCH_YES)
     {
+      /* Unset st->n.sym. Note: in reject_statement (), the symbol changes are
+	 undone, such that the st->n.sym->formal points to the original symbol;
+	 if now this namespace is finalized, the formal namespace is freed,
+	 but it might be still needed in the parent namespace.  */
+      gfc_symtree *st = gfc_find_symtree (gfc_current_ns->sym_root, sym->name);
+      st->n.sym = NULL;
+      gfc_free_symbol (sym->tlink);
+      sym->tlink = NULL;
+      sym->refs--;
       gfc_syntax_error (ST_MODULE_PROC);
       return MATCH_ERROR;
     }

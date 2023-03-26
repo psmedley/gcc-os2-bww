@@ -29,6 +29,9 @@
 ;; Iterator for HI, SI, DI, some instructions can only work on these modes.
 (define_mode_iterator GPI_I16 [(HI "AARCH64_ISA_F16") SI DI])
 
+;; "Iterator" for just TI -- features like @pattern only work with iterators.
+(define_mode_iterator JUST_TI [TI])
+
 ;; Iterator for QI and HI modes
 (define_mode_iterator SHORT [QI HI])
 
@@ -96,9 +99,6 @@
 ;; VQ without 2 element modes.
 (define_mode_iterator VQ_NO2E [V16QI V8HI V4SI V8HF V4SF])
 
-;; Quad vector with only 2 element modes.
-(define_mode_iterator VQ_2E [V2DI V2DF])
-
 ;; This mode iterator allows :P to be used for patterns that operate on
 ;; addresses in different modes.  In LP64, only DI will match, while in
 ;; ILP32, either can match.
@@ -127,6 +127,9 @@
 				  V2SF V4SF V2DF
 				  (HF "TARGET_SIMD_F16INST")
 				  SF DF])
+
+;; Scalar and vetor modes for SF, DF.
+(define_mode_iterator VSFDF [V2SF V4SF V2DF DF SF])
 
 ;; Advanced SIMD single Float modes.
 (define_mode_iterator VDQSF [V2SF V4SF])
@@ -1614,6 +1617,9 @@
 			    UNSPEC_FCMLA180
 			    UNSPEC_FCMLA270])
 
+(define_int_iterator FRINTNZX [UNSPEC_FRINT32Z UNSPEC_FRINT32X
+			       UNSPEC_FRINT64Z UNSPEC_FRINT64X])
+
 ;; Iterators for atomic operations.
 
 (define_int_iterator ATOMIC_LDOP
@@ -1852,6 +1858,9 @@
 
 (define_int_attr f16mac1 [(UNSPEC_FMLAL "a") (UNSPEC_FMLSL "s")
 			  (UNSPEC_FMLAL2 "a") (UNSPEC_FMLSL2 "s")])
+
+(define_int_attr frintnzs_op [(UNSPEC_FRINT32Z "frint32z") (UNSPEC_FRINT32X "frint32x")
+			      (UNSPEC_FRINT64Z "frint64z") (UNSPEC_FRINT64X "frint64x")])
 
 ;; The condition associated with an UNSPEC_COND_<xx>.
 (define_int_attr cmp_op [(UNSPEC_COND_LT "lt")

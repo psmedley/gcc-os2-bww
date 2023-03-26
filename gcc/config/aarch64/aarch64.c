@@ -317,6 +317,22 @@ static const struct cpu_addrcost_table qdf24xx_addrcost_table =
   2, /* imm_offset  */
 };
 
+static const struct cpu_addrcost_table a64fx_addrcost_table =
+{
+    {
+      1, /* hi  */
+      1, /* si  */
+      1, /* di  */
+      2, /* ti  */
+    },
+  0, /* pre_modify  */
+  0, /* post_modify  */
+  2, /* register_offset  */
+  3, /* register_sextend  */
+  3, /* register_zextend  */
+  0, /* imm_offset  */
+};
+
 static const struct cpu_regmove_cost generic_regmove_cost =
 {
   1, /* GP2GP  */
@@ -401,6 +417,16 @@ static const struct cpu_regmove_cost tsv110_regmove_cost =
   2, /* GP2FP  */
   3, /* FP2GP  */
   2  /* FP2FP  */
+};
+
+static const struct cpu_regmove_cost a64fx_regmove_cost =
+{
+  1, /* GP2GP  */
+  /* Avoid the use of slow int<->fp moves for spilling by setting
+     their cost higher than memmov_cost.  */
+  5, /* GP2FP  */
+  7, /* FP2GP  */
+  2 /* FP2FP  */
 };
 
 /* Generic costs for vector insn classes.  */
@@ -561,6 +587,25 @@ static const struct cpu_vector_cost thunderx2t99_vector_cost =
   1  /* cond_not_taken_branch_cost  */
 };
 
+static const struct cpu_vector_cost a64fx_vector_cost =
+{
+  1, /* scalar_int_stmt_cost  */
+  5, /* scalar_fp_stmt_cost  */
+  4, /* scalar_load_cost  */
+  1, /* scalar_store_cost  */
+  2, /* vec_int_stmt_cost  */
+  5, /* vec_fp_stmt_cost  */
+  3, /* vec_permute_cost  */
+  13, /* vec_to_scalar_cost  */
+  4, /* scalar_to_vec_cost  */
+  6, /* vec_align_load_cost  */
+  6, /* vec_unalign_load_cost  */
+  1, /* vec_unalign_store_cost  */
+  1, /* vec_store_cost  */
+  3, /* cond_taken_branch_cost  */
+  1 /* cond_not_taken_branch_cost  */
+};
+
 /* Generic costs for branch instructions.  */
 static const struct cpu_branch_cost generic_branch_cost =
 {
@@ -678,6 +723,17 @@ static const cpu_prefetch_tune xgene1_prefetch_tune =
   256,			/* l2_cache_size  */
   true,                 /* prefetch_dynamic_strides */
   -1,                   /* minimum_stride */
+  -1			/* default_opt_level  */
+};
+
+static const cpu_prefetch_tune a64fx_prefetch_tune =
+{
+  8,			/* num_slots  */
+  64,			/* l1_cache_size  */
+  256,			/* l1_cache_line_size  */
+  32768,		/* l2_cache_size  */
+  true,			/* prefetch_dynamic_strides */
+  -1,			/* minimum_stride */
   -1			/* default_opt_level  */
 };
 
@@ -1109,6 +1165,84 @@ static const struct tune_params neoversen1_tunings =
   tune_params::AUTOPREFETCHER_WEAK,	/* autoprefetcher_model.  */
   (AARCH64_EXTRA_TUNE_NONE),	/* tune_flags.  */
   &generic_prefetch_tune
+};
+
+static const struct tune_params neoversev1_tunings =
+{
+  &cortexa57_extra_costs,
+  &generic_addrcost_table,
+  &generic_regmove_cost,
+  &cortexa57_vector_cost,
+  &generic_branch_cost,
+  &generic_approx_modes,
+  SVE_256, /* sve_width  */
+  4, /* memmov_cost  */
+  3, /* issue_rate  */
+  AARCH64_FUSE_AES_AESMC, /* fusible_ops  */
+  "32:16",      /* function_align.  */
+  "32:16",      /* jump_align.  */
+  "32:16",      /* loop_align.  */
+  2,    /* int_reassoc_width.  */
+  4,    /* fp_reassoc_width.  */
+  2,    /* vec_reassoc_width.  */
+  2,    /* min_div_recip_mul_sf.  */
+  2,    /* min_div_recip_mul_df.  */
+  0,    /* max_case_values.  */
+  tune_params::AUTOPREFETCHER_WEAK,     /* autoprefetcher_model.  */
+  (AARCH64_EXTRA_TUNE_PREFER_ADVSIMD_AUTOVEC),    /* tune_flags.  */
+  &generic_prefetch_tune
+};
+
+static const struct tune_params neoversen2_tunings =
+{
+  &cortexa57_extra_costs,
+  &generic_addrcost_table,
+  &generic_regmove_cost,
+  &cortexa57_vector_cost,
+  &generic_branch_cost,
+  &generic_approx_modes,
+  SVE_128, /* sve_width  */
+  4, /* memmov_cost  */
+  3, /* issue_rate  */
+  AARCH64_FUSE_AES_AESMC, /* fusible_ops  */
+  "32:16",      /* function_align.  */
+  "32:16",      /* jump_align.  */
+  "32:16",      /* loop_align.  */
+  2,    /* int_reassoc_width.  */
+  4,    /* fp_reassoc_width.  */
+  2,    /* vec_reassoc_width.  */
+  2,    /* min_div_recip_mul_sf.  */
+  2,    /* min_div_recip_mul_df.  */
+  0,    /* max_case_values.  */
+  tune_params::AUTOPREFETCHER_WEAK,     /* autoprefetcher_model.  */
+  (AARCH64_EXTRA_TUNE_PREFER_ADVSIMD_AUTOVEC),    /* tune_flags.  */
+  &generic_prefetch_tune
+};
+
+static const struct tune_params a64fx_tunings =
+{
+  &a64fx_extra_costs,
+  &a64fx_addrcost_table,
+  &a64fx_regmove_cost,
+  &a64fx_vector_cost,
+  &generic_branch_cost,
+  &generic_approx_modes,
+  SVE_512, /* sve_width  */
+  4, /* memmov_cost  */
+  7, /* issue_rate  */
+  (AARCH64_FUSE_AES_AESMC | AARCH64_FUSE_CMP_BRANCH), /* fusible_ops  */
+  "32",	/* function_align.  */
+  "16",	/* jump_align.  */
+  "32",	/* loop_align.  */
+  4,	/* int_reassoc_width.  */
+  2,	/* fp_reassoc_width.  */
+  2,	/* vec_reassoc_width.  */
+  2,	/* min_div_recip_mul_sf.  */
+  2,	/* min_div_recip_mul_df.  */
+  0,	/* max_case_values.  */
+  tune_params::AUTOPREFETCHER_WEAK,	/* autoprefetcher_model.  */
+  (AARCH64_EXTRA_TUNE_NONE),	/* tune_flags.  */
+  &a64fx_prefetch_tune
 };
 
 /* Support for fine-grained override of the tuning structures.  */
@@ -1879,10 +2013,33 @@ emit_set_insn (rtx x, rtx y)
 rtx
 aarch64_gen_compare_reg (RTX_CODE code, rtx x, rtx y)
 {
-  machine_mode mode = SELECT_CC_MODE (code, x, y);
-  rtx cc_reg = gen_rtx_REG (mode, CC_REGNUM);
+  machine_mode cmp_mode = GET_MODE (x);
+  machine_mode cc_mode;
+  rtx cc_reg;
 
-  emit_set_insn (cc_reg, gen_rtx_COMPARE (mode, x, y));
+  if (cmp_mode == TImode)
+    {
+      gcc_assert (code == NE);
+
+      cc_mode = CCmode;
+      cc_reg = gen_rtx_REG (cc_mode, CC_REGNUM);
+
+      rtx x_lo = operand_subword (x, 0, 0, TImode);
+      rtx y_lo = operand_subword (y, 0, 0, TImode);
+      emit_set_insn (cc_reg, gen_rtx_COMPARE (cc_mode, x_lo, y_lo));
+
+      rtx x_hi = operand_subword (x, 1, 0, TImode);
+      rtx y_hi = operand_subword (y, 1, 0, TImode);
+      emit_insn (gen_ccmpdi (cc_reg, cc_reg, x_hi, y_hi,
+			     gen_rtx_EQ (cc_mode, cc_reg, const0_rtx),
+			     GEN_INT (AARCH64_EQ)));
+    }
+  else
+    {
+      cc_mode = SELECT_CC_MODE (code, x, y);
+      cc_reg = gen_rtx_REG (cc_mode, CC_REGNUM);
+      emit_set_insn (cc_reg, gen_rtx_COMPARE (cc_mode, x, y));
+    }
   return cc_reg;
 }
 
@@ -1895,7 +2052,10 @@ aarch64_gen_compare_reg_maybe_ze (RTX_CODE code, rtx x, rtx y,
   if (y_mode == E_QImode || y_mode == E_HImode)
     {
       if (CONST_INT_P (y))
-	y = GEN_INT (INTVAL (y) & GET_MODE_MASK (y_mode));
+	{
+	  y = GEN_INT (INTVAL (y) & GET_MODE_MASK (y_mode));
+	  y_mode = SImode;
+	}
       else
 	{
 	  rtx t, cc_reg;
@@ -2791,7 +2951,7 @@ aarch64_mov128_immediate (rtx imm)
 static unsigned int
 aarch64_add_offset_1_temporaries (HOST_WIDE_INT offset)
 {
-  return abs_hwi (offset) < 0x1000000 ? 0 : 1;
+  return absu_hwi (offset) < 0x1000000 ? 0 : 1;
 }
 
 /* A subroutine of aarch64_add_offset.  Set DEST to SRC + OFFSET for
@@ -2818,7 +2978,7 @@ aarch64_add_offset_1 (scalar_int_mode mode, rtx dest,
   gcc_assert (emit_move_imm || temp1 != NULL_RTX);
   gcc_assert (temp1 == NULL_RTX || !reg_overlap_mentioned_p (temp1, src));
 
-  HOST_WIDE_INT moffset = abs_hwi (offset);
+  unsigned HOST_WIDE_INT moffset = absu_hwi (offset);
   rtx_insn *insn;
 
   if (!moffset)
@@ -2862,7 +3022,8 @@ aarch64_add_offset_1 (scalar_int_mode mode, rtx dest,
   if (emit_move_imm)
     {
       gcc_assert (temp1 != NULL_RTX || can_create_pseudo_p ());
-      temp1 = aarch64_force_temporary (mode, temp1, GEN_INT (moffset));
+      temp1 = aarch64_force_temporary (mode, temp1,
+				       gen_int_mode (moffset, mode));
     }
   insn = emit_insn (offset < 0
 		    ? gen_sub3_insn (dest, src, temp1)
@@ -4853,6 +5014,17 @@ aarch64_return_address_signing_enabled (void)
 {
   /* This function should only be called after frame laid out.   */
   gcc_assert (cfun->machine->frame.laid_out);
+
+  /* Turn return address signing off in any function that uses
+     __builtin_eh_return.  The address passed to __builtin_eh_return
+     is not signed so either it has to be signed (with original sp)
+     or the code path that uses it has to avoid authenticating it.
+     Currently eh return introduces a return to anywhere gadget, no
+     matter what we do here since it uses ret with user provided
+     address. An ideal fix for that is to use indirect branch which
+     can be protected with BTI j (to some extent).  */
+  if (crtl->calls_eh_return)
+    return false;
 
   /* If signing scope is AARCH64_FUNCTION_NON_LEAF, we only sign a leaf function
      if it's LR is pushed onto stack.  */
@@ -7541,7 +7713,7 @@ sizetochar (int size)
      'S/T/U/V':		Print a FP/SIMD register name for a register list.
 			The register printed is the FP/SIMD register name
 			of X + 0/1/2/3 for S/T/U/V.
-     'R':		Print a scalar FP/SIMD register name + 1.
+     'R':		Print a scalar Integer/FP/SIMD register name + 1.
      'X':		Print bottom 16 bits of integer constant in hex.
      'w/x':		Print a general register name or the zero register
 			(32-bit or 64-bit).
@@ -7733,12 +7905,13 @@ aarch64_print_operand (FILE *f, rtx x, int code)
       break;
 
     case 'R':
-      if (!REG_P (x) || !FP_REGNUM_P (REGNO (x)))
-	{
-	  output_operand_lossage ("incompatible floating point / vector register operand for '%%%c'", code);
-	  return;
-	}
-      asm_fprintf (f, "q%d", REGNO (x) - V0_REGNUM + 1);
+      if (REG_P (x) && FP_REGNUM_P (REGNO (x)))
+	asm_fprintf (f, "q%d", REGNO (x) - V0_REGNUM + 1);
+      else if (REG_P (x) && GP_REGNUM_P (REGNO (x)))
+	asm_fprintf (f, "x%d", REGNO (x) - R0_REGNUM + 1);
+      else
+	output_operand_lossage ("incompatible register operand for '%%%c'",
+				code);
       break;
 
     case 'X':
@@ -8190,6 +8363,9 @@ aarch64_label_mentioned_p (rtx x)
 enum reg_class
 aarch64_regno_regclass (unsigned regno)
 {
+  if (STUB_REGNUM_P (regno))
+    return STUB_REGS;
+
   if (GP_REGNUM_P (regno))
     return GENERAL_REGS;
 
@@ -8397,6 +8573,24 @@ aarch64_initial_elimination_offset (unsigned from, unsigned to)
   return cfun->machine->frame.frame_size;
 }
 
+
+/* Get return address without mangling.  */
+
+rtx
+aarch64_return_addr_rtx (void)
+{
+  rtx val = get_hard_reg_initial_val (Pmode, LR_REGNUM);
+  /* Note: aarch64_return_address_signing_enabled only
+     works after cfun->machine->frame.laid_out is set,
+     so here we don't know if the return address will
+     be signed or not.  */
+  rtx lr = gen_rtx_REG (Pmode, LR_REGNUM);
+  emit_move_insn (lr, val);
+  emit_insn (GEN_FCN (CODE_FOR_xpaclri) ());
+  return lr;
+}
+
+
 /* Implement RETURN_ADDR_RTX.  We do not support moving back to a
    previous frame.  */
 
@@ -8405,15 +8599,15 @@ aarch64_return_addr (int count, rtx frame ATTRIBUTE_UNUSED)
 {
   if (count != 0)
     return const0_rtx;
-  return get_hard_reg_initial_val (Pmode, LR_REGNUM);
+  return aarch64_return_addr_rtx ();
 }
 
 
 static void
 aarch64_asm_trampoline_template (FILE *f)
 {
-  int offset1 = 16;
-  int offset2 = 20;
+  int offset1 = 24;
+  int offset2 = 28;
 
   if (aarch64_bti_enabled ())
     {
@@ -8436,6 +8630,17 @@ aarch64_asm_trampoline_template (FILE *f)
     }
   asm_fprintf (f, "\tbr\t%s\n", reg_names [IP1_REGNUM]);
 
+  /* We always emit a speculation barrier.
+     This is because the same trampoline template is used for every nested
+     function.  Since nested functions are not particularly common or
+     performant we don't worry too much about the extra instructions to copy
+     around.
+     This is not yet a problem, since we have not yet implemented function
+     specific attributes to choose between hardening against straight line
+     speculation or not, but such function specific attributes are likely to
+     happen in the future.  */
+  asm_fprintf (f, "\tdsb\tsy\n\tisb\n");
+
   /* The trampoline needs an extra padding instruction.  In case if BTI is
      enabled the padding instruction is replaced by the BTI instruction at
      the beginning.  */
@@ -8450,10 +8655,14 @@ static void
 aarch64_trampoline_init (rtx m_tramp, tree fndecl, rtx chain_value)
 {
   rtx fnaddr, mem, a_tramp;
-  const int tramp_code_sz = 16;
+  const int tramp_code_sz = 24;
 
   /* Don't need to copy the trailing D-words, we fill those in below.  */
-  emit_block_move (m_tramp, assemble_trampoline_template (),
+  /* We create our own memory address in Pmode so that `emit_block_move` can
+     use parts of the backend which expect Pmode addresses.  */
+  rtx temp = convert_memory_address (Pmode, XEXP (m_tramp, 0));
+  emit_block_move (gen_rtx_MEM (BLKmode, temp),
+		   assemble_trampoline_template (),
 		   GEN_INT (tramp_code_sz), BLOCK_OP_NORMAL);
   mem = adjust_address (m_tramp, ptr_mode, tramp_code_sz);
   fnaddr = XEXP (DECL_RTL (fndecl), 0);
@@ -8484,6 +8693,7 @@ aarch64_class_max_nregs (reg_class_t regclass, machine_mode mode)
   unsigned int nregs;
   switch (regclass)
     {
+    case STUB_REGS:
     case TAILCALL_ADDR_REGS:
     case POINTER_REGS:
     case GENERAL_REGS:
@@ -8640,6 +8850,8 @@ aarch64_output_casesi (rtx *operands)
   output_asm_insn (buf, operands);
   output_asm_insn (patterns[index][1], operands);
   output_asm_insn ("br\t%3", operands);
+  output_asm_insn (aarch64_sls_barrier (aarch64_harden_sls_retbr_p ()),
+		   operands);
   assemble_label (asm_out_file, label);
   return "";
 }
@@ -9333,10 +9545,11 @@ aarch64_mask_and_shift_for_ubfiz_p (scalar_int_mode mode, rtx mask,
 				    rtx shft_amnt)
 {
   return CONST_INT_P (mask) && CONST_INT_P (shft_amnt)
-	 && INTVAL (shft_amnt) < GET_MODE_BITSIZE (mode)
-	 && exact_log2 ((INTVAL (mask) >> INTVAL (shft_amnt)) + 1) >= 0
-	 && (INTVAL (mask)
-	     & ((HOST_WIDE_INT_1U << INTVAL (shft_amnt)) - 1)) == 0;
+	 && INTVAL (mask) > 0
+	 && UINTVAL (shft_amnt) < GET_MODE_BITSIZE (mode)
+	 && exact_log2 ((UINTVAL (mask) >> UINTVAL (shft_amnt)) + 1) >= 0
+	 && (UINTVAL (mask)
+	     & ((HOST_WIDE_INT_1U << UINTVAL (shft_amnt)) - 1)) == 0;
 }
 
 /* Return true if the masks and a shift amount from an RTX of the form
@@ -10676,10 +10889,12 @@ aarch64_register_move_cost (machine_mode mode,
     = aarch64_tune_params.regmove_cost;
 
   /* Caller save and pointer regs are equivalent to GENERAL_REGS.  */
-  if (to == TAILCALL_ADDR_REGS || to == POINTER_REGS)
+  if (to == TAILCALL_ADDR_REGS || to == POINTER_REGS
+      || to == STUB_REGS)
     to = GENERAL_REGS;
 
-  if (from == TAILCALL_ADDR_REGS || from == POINTER_REGS)
+  if (from == TAILCALL_ADDR_REGS || from == POINTER_REGS
+      || from == STUB_REGS)
     from = GENERAL_REGS;
 
   /* Moving between GPR and stack cost is the same as GP2GP.  */
@@ -11734,6 +11949,79 @@ aarch64_validate_mcpu (const char *str, const struct processor **res,
   return false;
 }
 
+/* Straight line speculation indicators.  */
+enum aarch64_sls_hardening_type
+{
+  SLS_NONE = 0,
+  SLS_RETBR = 1,
+  SLS_BLR = 2,
+  SLS_ALL = 3,
+};
+static enum aarch64_sls_hardening_type aarch64_sls_hardening;
+
+/* Return whether we should mitigatate Straight Line Speculation for the RET
+   and BR instructions.  */
+bool
+aarch64_harden_sls_retbr_p (void)
+{
+  return aarch64_sls_hardening & SLS_RETBR;
+}
+
+/* Return whether we should mitigatate Straight Line Speculation for the BLR
+   instruction.  */
+bool
+aarch64_harden_sls_blr_p (void)
+{
+  return aarch64_sls_hardening & SLS_BLR;
+}
+
+/* As of yet we only allow setting these options globally, in the future we may
+   allow setting them per function.  */
+static void
+aarch64_validate_sls_mitigation (const char *const_str)
+{
+  char *token_save = NULL;
+  char *str = NULL;
+
+  if (strcmp (const_str, "none") == 0)
+    {
+      aarch64_sls_hardening = SLS_NONE;
+      return;
+    }
+  if (strcmp (const_str, "all") == 0)
+    {
+      aarch64_sls_hardening = SLS_ALL;
+      return;
+    }
+
+  char *str_root = xstrdup (const_str);
+  str = strtok_r (str_root, ",", &token_save);
+  if (!str)
+    error ("invalid argument given to %<-mharden-sls=%>");
+
+  int temp = SLS_NONE;
+  while (str)
+    {
+      if (strcmp (str, "blr") == 0)
+	temp |= SLS_BLR;
+      else if (strcmp (str, "retbr") == 0)
+	temp |= SLS_RETBR;
+      else if (strcmp (str, "none") == 0 || strcmp (str, "all") == 0)
+	{
+	  error ("%<%s%> must be by itself for %<-mharden-sls=%>", str);
+	  break;
+	}
+      else
+	{
+	  error ("invalid argument %<%s%> for %<-mharden-sls=%>", str);
+	  break;
+	}
+      str = strtok_r (NULL, ",", &token_save);
+    }
+  aarch64_sls_hardening = (aarch64_sls_hardening_type) temp;
+  free (str_root);
+}
+
 /* Parses CONST_STR for branch protection features specified in
    aarch64_branch_protect_types, and set any global variables required.  Returns
    the parsing result and assigns LAST_STR to the last processed token from
@@ -11971,6 +12259,9 @@ aarch64_override_options (void)
   selected_cpu = NULL;
   selected_arch = NULL;
   selected_tune = NULL;
+
+  if (aarch64_harden_sls_string)
+    aarch64_validate_sls_mitigation (aarch64_harden_sls_string);
 
   if (aarch64_branch_protection_string)
     aarch64_validate_mbranch_protection (aarch64_branch_protection_string);
@@ -12517,6 +12808,8 @@ static const struct aarch64_attribute_info aarch64_attributes[] =
      aarch64_handle_attr_branch_protection, OPT_mbranch_protection_ },
   { "sign-return-address", aarch64_attr_enum, false, NULL,
      OPT_msign_return_address_ },
+  { "outline-atomics", aarch64_attr_bool, true, NULL,
+     OPT_moutline_atomics},
   { NULL, aarch64_attr_custom, false, NULL, OPT____ }
 };
 
@@ -13050,26 +13343,31 @@ aarch64_classify_symbol (rtx x, HOST_WIDE_INT offset)
 	     the offset does not cause overflow of the final address.  But
 	     we have no way of knowing the address of symbol at compile time
 	     so we can't accurately say if the distance between the PC and
-	     symbol + offset is outside the addressible range of +/-1M in the
-	     TINY code model.  So we rely on images not being greater than
-	     1M and cap the offset at 1M and anything beyond 1M will have to
-	     be loaded using an alternative mechanism.  Furthermore if the
-	     symbol is a weak reference to something that isn't known to
-	     resolve to a symbol in this module, then force to memory.  */
-	  if ((SYMBOL_REF_WEAK (x)
-	       && !aarch64_symbol_binds_local_p (x))
-	      || !IN_RANGE (offset, -1048575, 1048575))
+	     symbol + offset is outside the addressible range of +/-1MB in the
+	     TINY code model.  So we limit the maximum offset to +/-64KB and
+	     assume the offset to the symbol is not larger than +/-(1MB - 64KB).
+	     If offset_within_block_p is true we allow larger offsets.
+	     Furthermore force to memory if the symbol is a weak reference to
+	     something that doesn't resolve to a symbol in this module.  */
+
+	  if (SYMBOL_REF_WEAK (x) && !aarch64_symbol_binds_local_p (x))
 	    return SYMBOL_FORCE_TO_MEM;
+	  if (!(IN_RANGE (offset, -0x10000, 0x10000)
+		|| offset_within_block_p (x, offset)))
+	    return SYMBOL_FORCE_TO_MEM;
+
 	  return SYMBOL_TINY_ABSOLUTE;
 
 	case AARCH64_CMODEL_SMALL:
 	  /* Same reasoning as the tiny code model, but the offset cap here is
-	     4G.  */
-	  if ((SYMBOL_REF_WEAK (x)
-	       && !aarch64_symbol_binds_local_p (x))
-	      || !IN_RANGE (offset, HOST_WIDE_INT_C (-4294967263),
-			    HOST_WIDE_INT_C (4294967264)))
+	     1MB, allowing +/-3.9GB for the offset to the symbol.  */
+
+	  if (SYMBOL_REF_WEAK (x) && !aarch64_symbol_binds_local_p (x))
 	    return SYMBOL_FORCE_TO_MEM;
+	  if (!(IN_RANGE (offset, -0x100000, 0x100000)
+		|| offset_within_block_p (x, offset)))
+	    return SYMBOL_FORCE_TO_MEM;
+
 	  return SYMBOL_SMALL_ABSOLUTE;
 
 	case AARCH64_CMODEL_TINY_PIC:
@@ -14105,7 +14403,12 @@ aarch64_simd_container_mode (scalar_mode mode, poly_int64 width)
 static machine_mode
 aarch64_preferred_simd_mode (scalar_mode mode)
 {
-  poly_int64 bits = TARGET_SVE ? BITS_PER_SVE_VECTOR : 128;
+  /* If current tuning prefers Advanced SIMD, bypass SVE.  */
+  bool use_sve
+    = TARGET_SVE
+      && !(aarch64_tune_params.extra_tuning_flags
+	   & AARCH64_EXTRA_TUNE_PREFER_ADVSIMD_AUTOVEC);
+  poly_int64 bits = use_sve ? BITS_PER_SVE_VECTOR : 128;
   return aarch64_simd_container_mode (mode, bits);
 }
 
@@ -14114,7 +14417,11 @@ aarch64_preferred_simd_mode (scalar_mode mode)
 static void
 aarch64_autovectorize_vector_sizes (vector_sizes *sizes)
 {
-  if (TARGET_SVE)
+  bool use_sve
+    = TARGET_SVE
+      && !(aarch64_tune_params.extra_tuning_flags
+	   & AARCH64_EXTRA_TUNE_PREFER_ADVSIMD_AUTOVEC);
+  if (use_sve)
     sizes->safe_push (BYTES_PER_SVE_VECTOR);
   sizes->safe_push (16);
   sizes->safe_push (8);
@@ -15426,16 +15733,26 @@ static void
 aarch64_emit_load_exclusive (machine_mode mode, rtx rval,
 			     rtx mem, rtx model_rtx)
 {
-  emit_insn (gen_aarch64_load_exclusive (mode, rval, mem, model_rtx));
+  if (mode == TImode)
+    emit_insn (gen_aarch64_load_exclusive_pair (gen_lowpart (DImode, rval),
+						gen_highpart (DImode, rval),
+						mem, model_rtx));
+  else
+    emit_insn (gen_aarch64_load_exclusive (mode, rval, mem, model_rtx));
 }
 
 /* Emit store exclusive.  */
 
 static void
 aarch64_emit_store_exclusive (machine_mode mode, rtx bval,
-			      rtx rval, rtx mem, rtx model_rtx)
+			      rtx mem, rtx rval, rtx model_rtx)
 {
-  emit_insn (gen_aarch64_store_exclusive (mode, bval, rval, mem, model_rtx));
+  if (mode == TImode)
+    emit_insn (gen_aarch64_store_exclusive_pair
+	       (bval, mem, operand_subword (rval, 0, 0, TImode),
+		operand_subword (rval, 1, 0, TImode), model_rtx));
+  else
+    emit_insn (gen_aarch64_store_exclusive (mode, bval, mem, rval, model_rtx));
 }
 
 /* Mark the previous jump instruction as unlikely.  */
@@ -15446,6 +15763,82 @@ aarch64_emit_unlikely_jump (rtx insn)
   rtx_insn *jump = emit_jump_insn (insn);
   add_reg_br_prob_note (jump, profile_probability::very_unlikely ());
 }
+
+/* We store the names of the various atomic helpers in a 5x4 array.
+   Return the libcall function given MODE, MODEL and NAMES.  */
+
+rtx
+aarch64_atomic_ool_func(machine_mode mode, rtx model_rtx,
+			const atomic_ool_names *names)
+{
+  memmodel model = memmodel_base (INTVAL (model_rtx));
+  int mode_idx, model_idx;
+
+  switch (mode)
+    {
+    case E_QImode:
+      mode_idx = 0;
+      break;
+    case E_HImode:
+      mode_idx = 1;
+      break;
+    case E_SImode:
+      mode_idx = 2;
+      break;
+    case E_DImode:
+      mode_idx = 3;
+      break;
+    case E_TImode:
+      mode_idx = 4;
+      break;
+    default:
+      gcc_unreachable ();
+    }
+
+  switch (model)
+    {
+    case MEMMODEL_RELAXED:
+      model_idx = 0;
+      break;
+    case MEMMODEL_CONSUME:
+    case MEMMODEL_ACQUIRE:
+      model_idx = 1;
+      break;
+    case MEMMODEL_RELEASE:
+      model_idx = 2;
+      break;
+    case MEMMODEL_ACQ_REL:
+    case MEMMODEL_SEQ_CST:
+      model_idx = 3;
+      break;
+    default:
+      gcc_unreachable ();
+    }
+
+  return init_one_libfunc_visibility (names->str[mode_idx][model_idx],
+				      VISIBILITY_HIDDEN);
+}
+
+#define DEF0(B, N) \
+  { "__aarch64_" #B #N "_relax", \
+    "__aarch64_" #B #N "_acq", \
+    "__aarch64_" #B #N "_rel", \
+    "__aarch64_" #B #N "_acq_rel" }
+
+#define DEF4(B)  DEF0(B, 1), DEF0(B, 2), DEF0(B, 4), DEF0(B, 8), \
+		 { NULL, NULL, NULL, NULL }
+#define DEF5(B)  DEF0(B, 1), DEF0(B, 2), DEF0(B, 4), DEF0(B, 8), DEF0(B, 16)
+
+static const atomic_ool_names aarch64_ool_cas_names = { { DEF5(cas) } };
+const atomic_ool_names aarch64_ool_swp_names = { { DEF4(swp) } };
+const atomic_ool_names aarch64_ool_ldadd_names = { { DEF4(ldadd) } };
+const atomic_ool_names aarch64_ool_ldset_names = { { DEF4(ldset) } };
+const atomic_ool_names aarch64_ool_ldclr_names = { { DEF4(ldclr) } };
+const atomic_ool_names aarch64_ool_ldeor_names = { { DEF4(ldeor) } };
+
+#undef DEF0
+#undef DEF4
+#undef DEF5
 
 /* Expand a compare and swap pattern.  */
 
@@ -15493,6 +15886,17 @@ aarch64_expand_compare_and_swap (rtx operands[])
 						   newval, mod_s));
       cc_reg = aarch64_gen_compare_reg_maybe_ze (NE, rval, oldval, mode);
     }
+  else if (TARGET_OUTLINE_ATOMICS)
+    {
+      /* Oldval must satisfy compare afterward.  */
+      if (!aarch64_plus_operand (oldval, mode))
+	oldval = force_reg (mode, oldval);
+      rtx func = aarch64_atomic_ool_func (mode, mod_s, &aarch64_ool_cas_names);
+      rval = emit_library_call_value (func, NULL_RTX, LCT_NORMAL, r_mode,
+				      oldval, mode, newval, mode,
+				      XEXP (mem, 0), Pmode);
+      cc_reg = aarch64_gen_compare_reg_maybe_ze (NE, rval, oldval, mode);
+    }
   else
     {
       /* The oldval predicate varies by mode.  Test it and force to reg.  */
@@ -15538,13 +15942,11 @@ aarch64_split_compare_and_swap (rtx operands[])
   /* Split after prolog/epilog to avoid interactions with shrinkwrapping.  */
   gcc_assert (epilogue_completed);
 
-  rtx rval, mem, oldval, newval, scratch;
+  rtx rval, mem, oldval, newval, scratch, x, model_rtx;
   machine_mode mode;
   bool is_weak;
   rtx_code_label *label1, *label2;
-  rtx x, cond;
   enum memmodel model;
-  rtx model_rtx;
 
   rval = operands[0];
   mem = operands[1];
@@ -15565,7 +15967,8 @@ aarch64_split_compare_and_swap (rtx operands[])
 	CBNZ	scratch, .label1
     .label2:
 	CMP	rval, 0.  */
-  bool strong_zero_p = !is_weak && oldval == const0_rtx;
+  bool strong_zero_p = (!is_weak && !aarch64_track_speculation &&
+			oldval == const0_rtx && mode != TImode);
 
   label1 = NULL;
   if (!is_weak)
@@ -15578,35 +15981,20 @@ aarch64_split_compare_and_swap (rtx operands[])
   /* The initial load can be relaxed for a __sync operation since a final
      barrier will be emitted to stop code hoisting.  */
   if (is_mm_sync (model))
-    aarch64_emit_load_exclusive (mode, rval, mem,
-				 GEN_INT (MEMMODEL_RELAXED));
+    aarch64_emit_load_exclusive (mode, rval, mem, GEN_INT (MEMMODEL_RELAXED));
   else
     aarch64_emit_load_exclusive (mode, rval, mem, model_rtx);
 
   if (strong_zero_p)
-    {
-      if (aarch64_track_speculation)
-	{
-	  /* Emit an explicit compare instruction, so that we can correctly
-	     track the condition codes.  */
-	  rtx cc_reg = aarch64_gen_compare_reg (NE, rval, const0_rtx);
-	  x = gen_rtx_NE (GET_MODE (cc_reg), cc_reg, const0_rtx);
-	}
-      else
-	x = gen_rtx_NE (VOIDmode, rval, const0_rtx);
-
-      x = gen_rtx_IF_THEN_ELSE (VOIDmode, x,
-				gen_rtx_LABEL_REF (Pmode, label2), pc_rtx);
-      aarch64_emit_unlikely_jump (gen_rtx_SET (pc_rtx, x));
-    }
+    x = gen_rtx_NE (VOIDmode, rval, const0_rtx);
   else
     {
-      cond = aarch64_gen_compare_reg_maybe_ze (NE, rval, oldval, mode);
-      x = gen_rtx_NE (VOIDmode, cond, const0_rtx);
-      x = gen_rtx_IF_THEN_ELSE (VOIDmode, x,
-				gen_rtx_LABEL_REF (Pmode, label2), pc_rtx);
-      aarch64_emit_unlikely_jump (gen_rtx_SET (pc_rtx, x));
+      rtx cc_reg = aarch64_gen_compare_reg_maybe_ze (NE, rval, oldval, mode);
+      x = gen_rtx_NE (VOIDmode, cc_reg, const0_rtx);
     }
+  x = gen_rtx_IF_THEN_ELSE (VOIDmode, x,
+			    gen_rtx_LABEL_REF (Pmode, label2), pc_rtx);
+  aarch64_emit_unlikely_jump (gen_rtx_SET (pc_rtx, x));
 
   aarch64_emit_store_exclusive (mode, scratch, mem, newval, model_rtx);
 
@@ -15627,22 +16015,16 @@ aarch64_split_compare_and_swap (rtx operands[])
       aarch64_emit_unlikely_jump (gen_rtx_SET (pc_rtx, x));
     }
   else
-    {
-      cond = gen_rtx_REG (CCmode, CC_REGNUM);
-      x = gen_rtx_COMPARE (CCmode, scratch, const0_rtx);
-      emit_insn (gen_rtx_SET (cond, x));
-    }
+    aarch64_gen_compare_reg (NE, scratch, const0_rtx);
 
   emit_label (label2);
+
   /* If we used a CBNZ in the exchange loop emit an explicit compare with RVAL
      to set the condition flags.  If this is not used it will be removed by
      later passes.  */
   if (strong_zero_p)
-    {
-      cond = gen_rtx_REG (CCmode, CC_REGNUM);
-      x = gen_rtx_COMPARE (CCmode, rval, const0_rtx);
-      emit_insn (gen_rtx_SET (cond, x));
-    }
+    aarch64_gen_compare_reg (NE, rval, const0_rtx);
+
   /* Emit any final barrier needed for a __sync operation.  */
   if (is_mm_sync (model))
     aarch64_emit_post_barrier (model);
@@ -16415,7 +16797,8 @@ aarch64_evpc_rev_local (struct expand_vec_perm_d *d)
 
   if (d->vec_flags == VEC_SVE_PRED
       || !d->one_vector_p
-      || !d->perm[0].is_constant (&diff))
+      || !d->perm[0].is_constant (&diff)
+      || !diff)
     return false;
 
   size = (diff + 1) * GET_MODE_UNIT_SIZE (d->vmode);
@@ -17045,6 +17428,8 @@ aarch64_copy_one_block_and_progress_pointers (rtx *src, rtx *dst,
 bool
 aarch64_expand_movmem (rtx *operands)
 {
+  /* These need to be signed as we need to perform arithmetic on n as
+     signed operations.  */
   int n, mode_bits;
   rtx dst = operands[0];
   rtx src = operands[1];
@@ -17055,20 +17440,23 @@ aarch64_expand_movmem (rtx *operands)
   /* When optimizing for size, give a better estimate of the length of a
      memcpy call, but use the default otherwise.  Moves larger than 8 bytes
      will always require an even number of instructions to do now.  And each
-     operation requires both a load+store, so devide the max number by 2.  */
-  int max_num_moves = (speed_p ? 16 : AARCH64_CALL_RATIO) / 2;
+     operation requires both a load+store, so divide the max number by 2.  */
+  unsigned int max_num_moves = (speed_p ? 16 : AARCH64_CALL_RATIO) / 2;
 
   /* We can't do anything smart if the amount to copy is not constant.  */
   if (!CONST_INT_P (operands[2]))
     return false;
 
-  n = INTVAL (operands[2]);
+  unsigned HOST_WIDE_INT tmp = INTVAL (operands[2]);
 
   /* Try to keep the number of instructions low.  For all cases we will do at
      most two moves for the residual amount, since we'll always overlap the
      remainder.  */
-  if (((n / 16) + (n % 16 ? 2 : 0)) > max_num_moves)
+  if (((tmp / 16) + (tmp % 16 ? 2 : 0)) > max_num_moves)
     return false;
+
+  /* At this point tmp is known to have to fit inside an int.  */
+  n = tmp;
 
   base = copy_to_mode_reg (Pmode, XEXP (dst, 0));
   dst = adjust_automodify_address (dst, VOIDmode, base, 0);
@@ -18742,11 +19130,17 @@ aarch64_simd_clone_compute_vecsize_and_simdlen (struct cgraph_node *node,
       return 0;
     }
 
-  for (t = DECL_ARGUMENTS (node->decl); t; t = DECL_CHAIN (t))
-    {
-      arg_type = TREE_TYPE (t);
+  int i;
+  tree type_arg_types = TYPE_ARG_TYPES (TREE_TYPE (node->decl));
+  bool decl_arg_p = (node->definition || type_arg_types == NULL_TREE);
 
-      if (!currently_supported_simd_type (arg_type, base_type))
+  for (t = (decl_arg_p ? DECL_ARGUMENTS (node->decl) : type_arg_types), i = 0;
+       t && t != void_list_node; t = TREE_CHAIN (t), i++)
+    {
+      tree arg_type = decl_arg_p ? TREE_TYPE (t) : TREE_VALUE (t);
+
+      if (clonei->args[i].arg_type != SIMD_CLONE_ARG_TYPE_UNIFORM
+	  && !currently_supported_simd_type (arg_type, base_type))
 	{
 	  if (TYPE_SIZE (arg_type) != TYPE_SIZE (base_type))
 	    warning_at (DECL_SOURCE_LOCATION (node->decl), 0,
@@ -18899,6 +19293,231 @@ aarch64_file_end_indicate_exec_stack ()
 #undef GNU_PROPERTY_AARCH64_FEATURE_1_PAC
 #undef GNU_PROPERTY_AARCH64_FEATURE_1_BTI
 #undef GNU_PROPERTY_AARCH64_FEATURE_1_AND
+
+/* Helper function for straight line speculation.
+   Return what barrier should be emitted for straight line speculation
+   mitigation.
+   When not mitigating against straight line speculation this function returns
+   an empty string.
+   When mitigating against straight line speculation, use:
+   * SB when the v8.5-A SB extension is enabled.
+   * DSB+ISB otherwise.  */
+const char *
+aarch64_sls_barrier (int mitigation_required)
+{
+  return mitigation_required
+    ? (TARGET_SB ? "sb" : "dsb\tsy\n\tisb")
+    : "";
+}
+
+static GTY (()) tree aarch64_sls_shared_thunks[30];
+static GTY (()) bool aarch64_sls_shared_thunks_needed = false;
+const char *indirect_symbol_names[30] = {
+    "__call_indirect_x0",
+    "__call_indirect_x1",
+    "__call_indirect_x2",
+    "__call_indirect_x3",
+    "__call_indirect_x4",
+    "__call_indirect_x5",
+    "__call_indirect_x6",
+    "__call_indirect_x7",
+    "__call_indirect_x8",
+    "__call_indirect_x9",
+    "__call_indirect_x10",
+    "__call_indirect_x11",
+    "__call_indirect_x12",
+    "__call_indirect_x13",
+    "__call_indirect_x14",
+    "__call_indirect_x15",
+    "", /* "__call_indirect_x16",  */
+    "", /* "__call_indirect_x17",  */
+    "__call_indirect_x18",
+    "__call_indirect_x19",
+    "__call_indirect_x20",
+    "__call_indirect_x21",
+    "__call_indirect_x22",
+    "__call_indirect_x23",
+    "__call_indirect_x24",
+    "__call_indirect_x25",
+    "__call_indirect_x26",
+    "__call_indirect_x27",
+    "__call_indirect_x28",
+    "__call_indirect_x29",
+};
+
+/* Function to create a BLR thunk.  This thunk is used to mitigate straight
+   line speculation.  Instead of a simple BLR that can be speculated past,
+   we emit a BL to this thunk, and this thunk contains a BR to the relevant
+   register.  These thunks have the relevant speculation barries put after
+   their indirect branch so that speculation is blocked.
+
+   We use such a thunk so the speculation barriers are kept off the
+   architecturally executed path in order to reduce the performance overhead.
+
+   When optimizing for size we use stubs shared by the linked object.
+   When optimizing for performance we emit stubs for each function in the hope
+   that the branch predictor can better train on jumps specific for a given
+   function.  */
+rtx
+aarch64_sls_create_blr_label (int regnum)
+{
+  gcc_assert (STUB_REGNUM_P (regnum));
+  if (optimize_function_for_size_p (cfun))
+    {
+      /* For the thunks shared between different functions in this compilation
+	 unit we use a named symbol -- this is just for users to more easily
+	 understand the generated assembly.  */
+      aarch64_sls_shared_thunks_needed = true;
+      const char *thunk_name = indirect_symbol_names[regnum];
+      if (aarch64_sls_shared_thunks[regnum] == NULL)
+	{
+	  /* Build a decl representing this function stub and record it for
+	     later.  We build a decl here so we can use the GCC machinery for
+	     handling sections automatically (through `get_named_section` and
+	     `make_decl_one_only`).  That saves us a lot of trouble handling
+	     the specifics of different output file formats.  */
+	  tree decl = build_decl (BUILTINS_LOCATION, FUNCTION_DECL,
+				  get_identifier (thunk_name),
+				  build_function_type_list (void_type_node,
+							    NULL_TREE));
+	  DECL_RESULT (decl) = build_decl (BUILTINS_LOCATION, RESULT_DECL,
+					   NULL_TREE, void_type_node);
+	  TREE_PUBLIC (decl) = 1;
+	  TREE_STATIC (decl) = 1;
+	  DECL_IGNORED_P (decl) = 1;
+	  DECL_ARTIFICIAL (decl) = 1;
+	  make_decl_one_only (decl, DECL_ASSEMBLER_NAME (decl));
+	  resolve_unique_section (decl, 0, false);
+	  aarch64_sls_shared_thunks[regnum] = decl;
+	}
+
+      return gen_rtx_SYMBOL_REF (Pmode, thunk_name);
+    }
+
+  if (cfun->machine->call_via[regnum] == NULL)
+    cfun->machine->call_via[regnum]
+      = gen_rtx_LABEL_REF (Pmode, gen_label_rtx ());
+  return cfun->machine->call_via[regnum];
+}
+
+/* Helper function for aarch64_sls_emit_blr_function_thunks and
+   aarch64_sls_emit_shared_blr_thunks below.  */
+static void
+aarch64_sls_emit_function_stub (FILE *out_file, int regnum)
+{
+  /* Save in x16 and branch to that function so this transformation does
+     not prevent jumping to `BTI c` instructions.  */
+  asm_fprintf (out_file, "\tmov\tx16, x%d\n", regnum);
+  asm_fprintf (out_file, "\tbr\tx16\n");
+}
+
+/* Emit all BLR stubs for this particular function.
+   Here we emit all the BLR stubs needed for the current function.  Since we
+   emit these stubs in a consecutive block we know there will be no speculation
+   gadgets between each stub, and hence we only emit a speculation barrier at
+   the end of the stub sequences.
+
+   This is called in the TARGET_ASM_FUNCTION_EPILOGUE hook.  */
+void
+aarch64_sls_emit_blr_function_thunks (FILE *out_file)
+{
+  if (! aarch64_harden_sls_blr_p ())
+    return;
+
+  bool any_functions_emitted = false;
+  /* We must save and restore the current function section since this assembly
+     is emitted at the end of the function.  This means it can be emitted *just
+     after* the cold section of a function.  That cold part would be emitted in
+     a different section.  That switch would trigger a `.cfi_endproc` directive
+     to be emitted in the original section and a `.cfi_startproc` directive to
+     be emitted in the new section.  Switching to the original section without
+     restoring would mean that the `.cfi_endproc` emitted as a function ends
+     would happen in a different section -- leaving an unmatched
+     `.cfi_startproc` in the cold text section and an unmatched `.cfi_endproc`
+     in the standard text section.  */
+  section *save_text_section = in_section;
+  switch_to_section (function_section (current_function_decl));
+  for (int regnum = 0; regnum < 30; ++regnum)
+    {
+      rtx specu_label = cfun->machine->call_via[regnum];
+      if (specu_label == NULL)
+	continue;
+
+      targetm.asm_out.print_operand (out_file, specu_label, 0);
+      asm_fprintf (out_file, ":\n");
+      aarch64_sls_emit_function_stub (out_file, regnum);
+      any_functions_emitted = true;
+    }
+  if (any_functions_emitted)
+    /* Can use the SB if needs be here, since this stub will only be used
+      by the current function, and hence for the current target.  */
+    asm_fprintf (out_file, "\t%s\n", aarch64_sls_barrier (true));
+  switch_to_section (save_text_section);
+}
+
+/* Emit shared BLR stubs for the current compilation unit.
+   Over the course of compiling this unit we may have converted some BLR
+   instructions to a BL to a shared stub function.  This is where we emit those
+   stub functions.
+   This function is for the stubs shared between different functions in this
+   compilation unit.  We share when optimizing for size instead of speed.
+
+   This function is called through the TARGET_ASM_FILE_END hook.  */
+void
+aarch64_sls_emit_shared_blr_thunks (FILE *out_file)
+{
+  if (! aarch64_sls_shared_thunks_needed)
+    return;
+
+  for (int regnum = 0; regnum < 30; ++regnum)
+    {
+      tree decl = aarch64_sls_shared_thunks[regnum];
+      if (!decl)
+	continue;
+
+      const char *name = indirect_symbol_names[regnum];
+      switch_to_section (get_named_section (decl, NULL, 0));
+      ASM_OUTPUT_ALIGN (out_file, 2);
+      targetm.asm_out.globalize_label (out_file, name);
+      /* Only emits if the compiler is configured for an assembler that can
+	 handle visibility directives.  */
+      targetm.asm_out.assemble_visibility (decl, VISIBILITY_HIDDEN);
+      ASM_OUTPUT_TYPE_DIRECTIVE (out_file, name, "function");
+      ASM_OUTPUT_LABEL (out_file, name);
+      aarch64_sls_emit_function_stub (out_file, regnum);
+      /* Use the most conservative target to ensure it can always be used by any
+	 function in the translation unit.  */
+      asm_fprintf (out_file, "\tdsb\tsy\n\tisb\n");
+      ASM_DECLARE_FUNCTION_SIZE (out_file, name, decl);
+    }
+}
+
+/* Implement TARGET_ASM_FILE_END.  */
+void
+aarch64_asm_file_end ()
+{
+  aarch64_sls_emit_shared_blr_thunks (asm_out_file);
+  /* Since this function will be called for the ASM_FILE_END hook, we ensure
+     that what would be called otherwise (e.g. `file_end_indicate_exec_stack`
+     for FreeBSD) still gets called.  */
+#ifdef TARGET_ASM_FILE_END
+  TARGET_ASM_FILE_END ();
+#endif
+}
+
+const char *
+aarch64_indirect_call_asm (rtx addr)
+{
+  gcc_assert (REG_P (addr));
+  if (aarch64_harden_sls_blr_p ())
+    {
+      rtx stub_label = aarch64_sls_create_blr_label (REGNO (addr));
+      output_asm_insn ("bl\t%0", &stub_label);
+    }
+  else
+   output_asm_insn ("blr\t%0", &addr);
+  return "";
+}
 
 /* Target-specific selftests.  */
 
@@ -19419,6 +20038,12 @@ aarch64_libgcc_floating_mode_supported_p
 #undef TARGET_RUN_TARGET_SELFTESTS
 #define TARGET_RUN_TARGET_SELFTESTS selftest::aarch64_run_selftests
 #endif /* #if CHECKING_P */
+
+#undef TARGET_ASM_FILE_END
+#define TARGET_ASM_FILE_END aarch64_asm_file_end
+
+#undef TARGET_ASM_FUNCTION_EPILOGUE
+#define TARGET_ASM_FUNCTION_EPILOGUE aarch64_sls_emit_blr_function_thunks
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 

@@ -408,6 +408,7 @@ extern const struct processor_costs ix86_size_cost;
 #define TARGET_ICELAKE_CLIENT (ix86_tune == PROCESSOR_ICELAKE_CLIENT)
 #define TARGET_ICELAKE_SERVER (ix86_tune == PROCESSOR_ICELAKE_SERVER)
 #define TARGET_CASCADELAKE (ix86_tune == PROCESSOR_CASCADELAKE)
+#define TARGET_TIGERLAKE (ix86_tune == PROCESSOR_TIGERLAKE)
 #define TARGET_INTEL (ix86_tune == PROCESSOR_INTEL)
 #define TARGET_GENERIC (ix86_tune == PROCESSOR_GENERIC)
 #define TARGET_AMDFAM10 (ix86_tune == PROCESSOR_AMDFAM10)
@@ -2238,11 +2239,10 @@ extern int const svr4_dbx_register_map[FIRST_PSEUDO_REGISTER];
 
 /* Under some conditions we need jump tables in the text section,
    because the assembler cannot handle label differences between
-   sections.  This is the case for x86_64 on Mach-O for example.  */
+   sections.  */
 
 #define JUMP_TABLES_IN_TEXT_SECTION \
-  (flag_pic && ((TARGET_MACHO && TARGET_64BIT) \
-   || (!TARGET_64BIT && !HAVE_AS_GOTOFF_IN_DATA)))
+  (flag_pic && !(TARGET_64BIT || HAVE_AS_GOTOFF_IN_DATA))
 
 /* Switch to init or fini section via SECTION_OP, emit a call to FUNC,
    and switch back.  For x86 we do this only to save a few bytes that
@@ -2289,6 +2289,7 @@ enum processor_type
   PROCESSOR_ICELAKE_CLIENT,
   PROCESSOR_ICELAKE_SERVER,
   PROCESSOR_CASCADELAKE,
+  PROCESSOR_TIGERLAKE,
   PROCESSOR_INTEL,
   PROCESSOR_GEODE,
   PROCESSOR_K6,
@@ -2386,6 +2387,9 @@ const wide_int_bitmask PTA_PCONFIG (0, HOST_WIDE_INT_1U << 7);
 const wide_int_bitmask PTA_WBNOINVD (0, HOST_WIDE_INT_1U << 8);
 const wide_int_bitmask PTA_WAITPKG (0, HOST_WIDE_INT_1U << 9);
 const wide_int_bitmask PTA_PTWRITE (0, HOST_WIDE_INT_1U << 10);
+const wide_int_bitmask PTA_MOVDIRI (0, HOST_WIDE_INT_1U << 13);
+const wide_int_bitmask PTA_MOVDIR64B (0, HOST_WIDE_INT_1U << 14);
+const wide_int_bitmask PTA_CLDEMOTE (0, HOST_WIDE_INT_1U << 16);
 
 const wide_int_bitmask PTA_CORE2 = PTA_64BIT | PTA_MMX | PTA_SSE | PTA_SSE2
   | PTA_SSE3 | PTA_SSSE3 | PTA_CX16 | PTA_FXSR;
@@ -2398,8 +2402,8 @@ const wide_int_bitmask PTA_IVYBRIDGE = PTA_SANDYBRIDGE | PTA_FSGSBASE
   | PTA_RDRND | PTA_F16C;
 const wide_int_bitmask PTA_HASWELL = PTA_IVYBRIDGE | PTA_AVX2 | PTA_BMI
   | PTA_BMI2 | PTA_LZCNT | PTA_FMA | PTA_MOVBE | PTA_HLE;
-const wide_int_bitmask PTA_BROADWELL = PTA_HASWELL | PTA_ADX | PTA_PRFCHW
-  | PTA_RDSEED;
+const wide_int_bitmask PTA_BROADWELL = PTA_HASWELL | PTA_ADX | PTA_RDSEED
+  | PTA_PRFCHW;
 const wide_int_bitmask PTA_SKYLAKE = PTA_BROADWELL | PTA_AES | PTA_CLFLUSHOPT
   | PTA_XSAVEC | PTA_XSAVES | PTA_SGX;
 const wide_int_bitmask PTA_SKYLAKE_AVX512 = PTA_SKYLAKE | PTA_AVX512F
@@ -2411,20 +2415,23 @@ const wide_int_bitmask PTA_CANNONLAKE = PTA_SKYLAKE | PTA_AVX512F
   | PTA_AVX512VBMI | PTA_AVX512IFMA | PTA_SHA;
 const wide_int_bitmask PTA_ICELAKE_CLIENT = PTA_CANNONLAKE | PTA_AVX512VNNI
   | PTA_GFNI | PTA_VAES | PTA_AVX512VBMI2 | PTA_VPCLMULQDQ | PTA_AVX512BITALG
-  | PTA_RDPID | PTA_CLWB | PTA_AVX512VPOPCNTDQ;
+  | PTA_RDPID | PTA_AVX512VPOPCNTDQ;
 const wide_int_bitmask PTA_ICELAKE_SERVER = PTA_ICELAKE_CLIENT | PTA_PCONFIG
-  | PTA_WBNOINVD;
+  | PTA_WBNOINVD | PTA_CLWB;
+const wide_int_bitmask PTA_TIGERLAKE = PTA_ICELAKE_CLIENT | PTA_MOVDIRI
+  | PTA_MOVDIR64B | PTA_CLWB;
 const wide_int_bitmask PTA_KNL = PTA_BROADWELL | PTA_AVX512PF | PTA_AVX512ER
-  | PTA_AVX512F | PTA_AVX512CD;
+  | PTA_AVX512F | PTA_AVX512CD | PTA_PREFETCHWT1;
 const wide_int_bitmask PTA_BONNELL = PTA_CORE2 | PTA_MOVBE;
-const wide_int_bitmask PTA_SILVERMONT = PTA_WESTMERE | PTA_MOVBE | PTA_RDRND;
+const wide_int_bitmask PTA_SILVERMONT = PTA_WESTMERE | PTA_MOVBE | PTA_RDRND
+  | PTA_PRFCHW;
 const wide_int_bitmask PTA_GOLDMONT = PTA_SILVERMONT | PTA_AES | PTA_SHA | PTA_XSAVE
   | PTA_RDSEED | PTA_XSAVEC | PTA_XSAVES | PTA_CLFLUSHOPT | PTA_XSAVEOPT
   | PTA_FSGSBASE;
 const wide_int_bitmask PTA_GOLDMONT_PLUS = PTA_GOLDMONT | PTA_RDPID
   | PTA_SGX | PTA_PTWRITE;
 const wide_int_bitmask PTA_TREMONT = PTA_GOLDMONT_PLUS | PTA_CLWB
-  | PTA_GFNI;
+  | PTA_GFNI | PTA_MOVDIRI | PTA_MOVDIR64B | PTA_CLDEMOTE | PTA_WAITPKG;
 const wide_int_bitmask PTA_KNM = PTA_KNL | PTA_AVX5124VNNIW
   | PTA_AVX5124FMAPS | PTA_AVX512VPOPCNTDQ;
 

@@ -2751,7 +2751,9 @@ check_local_shadow (tree decl)
       else if (warn_shadow_local)
 	warning_code = OPT_Wshadow_local;
       else if (warn_shadow_compatible_local
-	       && (same_type_p (TREE_TYPE (old), TREE_TYPE (decl))
+	       && ((TREE_TYPE (old)
+		    && TREE_TYPE (decl)
+		    && same_type_p (TREE_TYPE (old), TREE_TYPE (decl)))
 		   || (!dependent_type_p (TREE_TYPE (decl))
 		       && !dependent_type_p (TREE_TYPE (old))
 		       /* If the new decl uses auto, we don't yet know
@@ -2988,7 +2990,8 @@ do_pushdecl (tree decl, bool is_friend)
   /* The binding level we will be pushing into.  During local class
      pushing, we want to push to the containing scope.  */
   cp_binding_level *level = current_binding_level;
-  while (level->kind == sk_class)
+  while (level->kind == sk_class
+	 || level->kind == sk_cleanup)
     level = level->level_chain;
 
   /* An anonymous namespace has a NULL DECL_NAME, but we still want to
@@ -7626,10 +7629,10 @@ maybe_save_operator_binding (tree e)
 
   if (!fns && (fns = op_unqualified_lookup (fnname)))
     {
-      tree fn = get_first_fn (fns);
-      if (DECL_CLASS_SCOPE_P (fn))
-	/* We don't need to remember class-scope functions, normal unqualified
-	   lookup will find them again.  */
+      tree d = is_overloaded_fn (fns) ? get_first_fn (fns) : fns;
+      if (DECL_P (d) && DECL_CLASS_SCOPE_P (d))
+	/* We don't need to remember class-scope functions or declarations,
+	   normal unqualified lookup will find them again.  */
 	return;
 
       bindings = tree_cons (fnname, fns, bindings);

@@ -690,7 +690,7 @@ fs::create_hard_link(const path& to, const path& new_hard_link,
   if (CreateHardLinkW(new_hard_link.c_str(), to.c_str(), NULL))
     ec.clear();
   else
-    ec.assign((int)GetLastError(), generic_category());
+    ec.assign((int)GetLastError(), system_category());
 #else
   ec = std::make_error_code(std::errc::not_supported);
 #endif
@@ -882,12 +882,12 @@ fs::equivalent(const path& p1, const path& p2, error_code& ec) noexcept
       if (!h1 || !h2)
 	{
 	  if (!h1 && !h2)
-	    ec.assign((int)GetLastError(), generic_category());
+	    ec.assign((int)GetLastError(), system_category());
 	  return false;
 	}
       if (!h1.get_info() || !h2.get_info())
 	{
-	  ec.assign((int)GetLastError(), generic_category());
+	  ec.assign((int)GetLastError(), system_category());
 	  return false;
 	}
       return h1.info.dwVolumeSerialNumber == h2.info.dwVolumeSerialNumber
@@ -1175,11 +1175,17 @@ fs::path fs::read_symlink(const path& p, error_code& ec)
   path result;
 #if defined(_GLIBCXX_HAVE_READLINK) && defined(_GLIBCXX_HAVE_SYS_STAT_H)
   stat_type st;
-  if (::lstat(p.c_str(), &st))
+  if (posix::lstat(p.c_str(), &st))
     {
       ec.assign(errno, std::generic_category());
       return result;
     }
+  else if (!fs::is_symlink(make_file_status(st)))
+    {
+      ec.assign(EINVAL, std::generic_category());
+      return result;
+    }
+
   std::string buf(st.st_size ? st.st_size + 1 : 128, '\0');
   do
     {
@@ -1257,7 +1263,7 @@ fs::remove(const path& p, error_code& ec) noexcept
 	  return true;
 	}
       else if (!ec)
-	ec.assign((int)GetLastError(), generic_category());
+	ec.assign((int)GetLastError(), system_category());
     }
   else if (status_known(st))
     ec.clear();

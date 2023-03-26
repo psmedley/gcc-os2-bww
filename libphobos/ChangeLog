@@ -1,3 +1,50 @@
+2021-06-01  Release Manager
+
+	* GCC 9.4.0 released.
+
+2021-05-01  Iain Sandoe  <iain@sandoe.co.uk>
+	    Jakub Jelinek   <jakub@redhat.com>
+
+	PR target/97865
+	* configure: Regenerate.
+
+2021-01-24  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	Backported from master:
+	2021-01-23  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	PR d/98806
+	* libdruntime/gcc/sections/elf_shared.d (MIPS_Any): Declare version
+	for MIPS32 and MIPS64.
+	(getDependencies): Adjust dlpi_addr on MIPS_Any.
+
+2020-10-15  Maciej W. Rozycki  <macro@linux-mips.org>
+
+	Backported from master:
+	2020-10-12  Maciej W. Rozycki  <macro@linux-mips.org>
+
+	* libdruntime/config/mips/switchcontext.S [__mips_hard_float]:
+	Use L.D and S.D generic assembly instructions rather than LDC1
+	and SDC1 MIPS II hardware instructions.
+
+2020-05-16  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	PR d/90719
+	* libdruntime/core/sys/posix/sys/stat.d (Solaris): Move st_pad3 from
+	struct stat64_t to stat32_t.
+
+2020-04-27  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	PR d/90718
+	* libdruntime/core/sys/posix/netdb.d (Solaris): Include _ai_pad member
+	in struct addrinfo only when targeting SPARC64.
+
+2020-04-27  Iain Buclaw  <ibuclaw@gdcproject.org>
+
+	PR d/90719
+	* libdruntime/core/sys/posix/sys/stat.d (Solaris): Remove st_pad3 from
+	struct stat32_t.
+
 2020-03-12  Release Manager
 
 	* GCC 9.3.0 released.

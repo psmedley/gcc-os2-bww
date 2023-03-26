@@ -3112,27 +3112,25 @@ expand_builtin_strnlen (tree exp, rtx target, machine_mode target_mode)
 	    return NULL_RTX;
 	}
 
-      if (lendata.decl
-	  && !TREE_NO_WARNING (exp)
-	  && ((tree_int_cst_lt (len, bound))
-	      || !exact))
+      if (lendata.decl && (tree_int_cst_lt (len, bound) || !exact))
 	{
 	  location_t warnloc
 	    = expansion_point_location_if_in_system_header (loc);
 
-	  if (warning_at (warnloc, OPT_Wstringop_overflow_,
-			  exact
-			  ? G_("%K%qD specified bound %E exceeds the size %E "
-			       "of unterminated array")
-			  : G_("%K%qD specified bound %E may exceed the size "
-			       "of at most %E of unterminated array"),
-			  exp, func, bound, len))
+	  if (!TREE_NO_WARNING (exp)
+	      && warning_at (warnloc, OPT_Wstringop_overflow_,
+			     exact
+			     ? G_("%K%qD specified bound %E exceeds the size "
+				  "%E of unterminated array")
+			     : G_("%K%qD specified bound %E may exceed the "
+				  "size of at most %E of unterminated array"),
+			     exp, func, bound, len))
 	    {
 	      inform (DECL_SOURCE_LOCATION (lendata.decl),
 		      "referenced argument declared here");
 	      TREE_NO_WARNING (exp) = true;
-	      return NULL_RTX;
 	    }
+	  return NULL_RTX;
 	}
 
       if (!len)
@@ -10269,7 +10267,8 @@ fold_builtin_next_arg (tree exp, bool va_start_p)
       arg = CALL_EXPR_ARG (exp, 0);
     }
 
-  if (TREE_CODE (arg) == SSA_NAME)
+  if (TREE_CODE (arg) == SSA_NAME
+      && SSA_NAME_VAR (arg))
     arg = SSA_NAME_VAR (arg);
 
   /* We destructively modify the call to be __builtin_va_start (ap, 0)

@@ -928,8 +928,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   template<typename _Fn, typename... _Args>
     _Bind_front_t<_Fn, _Args...>
     bind_front(_Fn&& __fn, _Args&&... __args)
-    noexcept(is_nothrow_constructible_v<int, _Bind_front_t<_Fn, _Args...>,
-					_Fn, _Args...>)
+    noexcept(is_nothrow_constructible_v<_Bind_front_t<_Fn, _Args...>,
+					int, _Fn, _Args...>)
     {
       return _Bind_front_t<_Fn, _Args...>(0, std::forward<_Fn>(__fn),
 					  std::forward<_Args>(__args)...);
@@ -974,7 +974,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       _GLIBCXX_NOT_FN_CALL_OP( const & )
       _GLIBCXX_NOT_FN_CALL_OP( && )
       _GLIBCXX_NOT_FN_CALL_OP( const && )
-#undef _GLIBCXX_NOT_FN_CALL
+#undef _GLIBCXX_NOT_FN_CALL_OP
 
     private:
       _Fn _M_fn;
