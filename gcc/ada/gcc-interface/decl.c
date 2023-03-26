@@ -445,15 +445,22 @@ gnat_to_gnu_entity (Entity_Id gnat_entity, tree gnu_expr, bool definition)
 
   /* If we get here, it means we have not yet done anything with this entity.
      If we are not defining it, it must be a type or an entity that is defined
-     elsewhere or externally, otherwise we should have defined it already.  */
+     elsewhere or externally, otherwise we should have defined it already.
+
+     One exception is for an entity, typically an inherited operation, which is
+     a local alias for the parent's operation.  It is neither defined, since it
+     is an inherited operation, nor public, since it is declared in the current
+     compilation unit, so we test Is_Public on the Alias entity instead.  */
   gcc_assert (definition
-	      || type_annotate_only
 	      || is_type
 	      || kind == E_Discriminant
 	      || kind == E_Component
 	      || kind == E_Label
 	      || (kind == E_Constant && Present (Full_View (gnat_entity)))
-	      || Is_Public (gnat_entity));
+	      || Is_Public (gnat_entity)
+	      || (Present (Alias (gnat_entity))
+		  && Is_Public (Alias (gnat_entity)))
+	      || type_annotate_only);
 
   /* Get the name of the entity and set up the line number and filename of
      the original definition for use in any decl we make.  Make sure we do
@@ -8255,9 +8262,8 @@ annotate_value (tree gnu_size)
     {
     case INTEGER_CST:
       /* For negative values, build NEGATE_EXPR of the opposite.  Such values
-	 can appear for discriminants in expressions for variants.  Note that,
-	 sizetype being unsigned, we don't directly use tree_int_cst_sgn.  */
-      if (tree_int_cst_sign_bit (gnu_size))
+	 can appear for discriminants in expressions for variants.  */
+      if (tree_int_cst_sgn (gnu_size) < 0)
 	{
 	  tree t = wide_int_to_tree (sizetype, -wi::to_wide (gnu_size));
 	  tcode = Negate_Expr;
@@ -8335,9 +8341,8 @@ annotate_value (tree gnu_size)
 	  && tree_int_cst_sign_bit (TREE_OPERAND (gnu_size, 1)))
 	{
 	  tcode = Minus_Expr;
-	  ops[0] = annotate_value (TREE_OPERAND (gnu_size, 0));
-	  wide_int op1 = -wi::to_wide (TREE_OPERAND (gnu_size, 1));
-	  ops[1] = annotate_value (wide_int_to_tree (sizetype, op1));
+	  wide_int wop1 = -wi::to_wide (TREE_OPERAND (gnu_size, 1));
+	  ops[1] = annotate_value (wide_int_to_tree (sizetype, wop1));
 	  break;
 	}
 
@@ -8378,9 +8383,9 @@ annotate_value (tree gnu_size)
 	 Such values can appear in expressions with aligning patterns.  */
       if (TREE_CODE (TREE_OPERAND (gnu_size, 1)) == INTEGER_CST)
 	{
-	  wide_int op1 = wi::sext (wi::to_wide (TREE_OPERAND (gnu_size, 1)),
-				   TYPE_PRECISION (sizetype));
-	  ops[1] = annotate_value (wide_int_to_tree (sizetype, op1));
+	  wide_int wop1 = -wi::to_wide (TREE_OPERAND (gnu_size, 1));
+	  tree op1 = wide_int_to_tree (sizetype, wop1);
+	  ops[1] = annotate_value (build1 (NEGATE_EXPR, sizetype, op1));
 	}
       break;
 
